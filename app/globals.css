@@ -1,26 +1,406 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ================================================================== *
+ * APHIDET BARBER — design tokens
+ *
+ * Thai local barber-shop poster: black, barber green, barber yellow,
+ * off-white. Hard-edged stickers, brush strokes, distressed paper.
+ * Mobile-first.
+ *
+ * NOTE: the `ink-*` and `gold-*` ramps are deliberately re-pointed at the new
+ * palette. The old names are kept as the token *slots* so the existing
+ * `bg-ink-850` / `text-gold-300` call sites re-skin instead of needing a
+ * rename sweep — `gold` now means barber yellow, not luxury gold.
+ * ================================================================== */
+@theme {
+  /* ---- black / charcoal ---- */
+  --color-ink-950: #0b0b0b; /* --black */
+  --color-ink-900: #101010;
+  --color-ink-850: #151515; /* --dark */
+  --color-ink-800: #1b1b1b;
+  --color-ink-750: #232323;
+  --color-ink-700: #2c2c2c;
+  --color-ink-600: #3a3a3a;
+  --color-ink-500: #4c4c4c;
+
+  /* ---- barber green ---- */
+  --color-green-950: #0a1f11;
+  --color-green-900: #0f2c19;
+  --color-green-800: #173d25; /* --green */
+  --color-green-700: #1f5230;
+  --color-green-600: #2e6b35; /* --green-light */
+  --color-green-500: #3b8043;
+
+  /* ---- barber yellow (the former "gold" ramp) ---- */
+  --color-gold-200: #ffebb0;
+  --color-gold-300: #ffd85c;
+  --color-gold-400: #ffc400; /* --yellow-bright */
+  --color-gold-500: #f5b800; /* --yellow */
+  --color-gold-600: #d69c00;
+  --color-gold-700: #a67a00;
+
+  /* ---- warm off-white (poster paper) ---- */
+  --color-paper: #f5f2e8;
+  --color-paper-dim: #e7e2d4;
+
+  /* ---- semantic status ---- */
+  --color-success: #46b36a;
+  --color-warning: #ffc400;
+  --color-danger: #e04a3a;
+  --color-info: #7dd3fc;
+
+  --font-sans: var(--font-plex-thai), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+  /* Thai-capable display face. The old --font-sora slot had no Thai glyphs, so
+     Thai headings silently fell back; Bai Jamjuree is a bold, condensed Thai +
+     Latin face that actually renders the poster typography. */
+  --font-display: var(--font-bai), var(--font-sora), var(--font-plex-thai),
+    ui-sans-serif, system-ui, sans-serif;
+
+  --radius-4xl: 1.75rem;
+  --radius-5xl: 2.25rem;
+  --radius-6xl: 3rem;
+
+  /* Hard offset shadows read as printed/stuck-on paper, not soft UI glow. */
+  --shadow-card: 0 0 0 1px rgb(255 255 255 / 0.07);
+  --shadow-float: 0 0 0 1px rgb(255 255 255 / 0.09), 0 18px 40px -22px #000;
+  --shadow-gold: 5px 5px 0 0 var(--color-gold-500);
+  --shadow-sticker: 4px 4px 0 0 #000;
+  --shadow-sticker-green: 4px 4px 0 0 var(--color-green-800);
+  --shadow-sticker-yellow: 4px 4px 0 0 var(--color-gold-500);
+  --shadow-inset-hairline: inset 0 1px 0 0 rgb(255 255 255 / 0.06);
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --animate-marquee: marquee 26s linear infinite;
+  --animate-shimmer: shimmer 1.6s ease-in-out infinite;
+  --animate-scrub: scrub 9s ease-in-out infinite;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes shimmer {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Hand-painted stroke drift. Very small amplitude — it should read as
+   "painted", not as a moving background. */
+@keyframes scrub {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(var(--brush-rot, 0deg));
+  }
+  50% {
+    transform: translate3d(0.6%, -0.8%, 0) rotate(calc(var(--brush-rot, 0deg) + 0.5deg));
+  }
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    /* Mobile-first guarantee: no child, decoration or negative margin can ever
+       produce a sideways scrollbar at 360px. `clip` (not `hidden`) so it does
+       not turn the element into a scroll container. */
+    overflow-x: clip;
+  }
+
+  body {
+    background-color: var(--color-ink-950);
+    color: var(--color-paper);
+    font-family: var(--font-sans);
+    overscroll-behavior-y: none;
+    overflow-x: clip;
+    max-width: 100%;
+  }
+
+  /* Poster ground: black paper, a green wash low-left, yellow warmth top-right,
+     plus a fine grain so large flat areas are not dead. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        100% 55% at 100% 0%,
+        rgb(245 184 0 / 0.09) 0%,
+        transparent 58%
+      ),
+      radial-gradient(
+        90% 50% at 0% 100%,
+        rgb(23 61 37 / 0.55) 0%,
+        transparent 60%
+      );
+  }
+
+  /* Distress grain, above the ground wash and below content. */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.32;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  }
+
+  ::selection {
+    background: var(--color-gold-500);
+    color: #0b0b0b;
+  }
+
+  /* Visible focus ring, never removed */
+  :focus-visible {
+    outline: 3px solid var(--color-gold-400);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  /* iOS: prevent zoom on input focus */
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1rem);
+  }
+}
+
+@layer utilities {
+  /* ---------------------------------------------------------------- *
+   * Brush strokes
+   *
+   * Irregular clip-paths rather than soft gradients — a brush stroke has
+   * torn ends and a wavy edge, which a border-radius cannot express.
+   * ---------------------------------------------------------------- */
+  .brush {
+    --brush-rot: 0deg;
+    animation: var(--animate-scrub);
+    transform: rotate(var(--brush-rot));
+  }
+
+  /* Wide horizontal swipe, for underlining a headline. */
+  .brush-yellow {
+    background: var(--color-gold-500);
+    clip-path: polygon(
+      1% 38%,
+      7% 22%,
+      22% 30%,
+      41% 14%,
+      63% 26%,
+      82% 12%,
+      99% 24%,
+      97% 62%,
+      80% 76%,
+      58% 66%,
+      36% 82%,
+      18% 70%,
+      2% 80%
+    );
+  }
+
+  .brush-green {
+    background: var(--color-green-800);
+    clip-path: polygon(
+      0% 30%,
+      12% 16%,
+      30% 28%,
+      48% 12%,
+      68% 24%,
+      86% 10%,
+      100% 22%,
+      98% 66%,
+      84% 82%,
+      62% 70%,
+      40% 84%,
+      18% 72%,
+      1% 84%
+    );
+  }
+
+  .brush-white {
+    background: var(--color-paper);
+    clip-path: polygon(
+      0% 26%,
+      14% 12%,
+      33% 24%,
+      52% 10%,
+      71% 22%,
+      88% 8%,
+      100% 20%,
+      99% 70%,
+      82% 86%,
+      60% 74%,
+      38% 88%,
+      17% 76%,
+      0% 86%
+    );
+  }
+
+  /* Diagonal stroke for tall emphasis blocks. */
+  .brush-diagonal {
+    clip-path: polygon(
+      4% 0%,
+      100% 0%,
+      96% 100%,
+      0% 100%,
+      8% 78%,
+      2% 56%,
+      10% 32%
+    );
+  }
+
+  /* Torn-paper top edge, for the off-white panels. */
+  .torn-top {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='8' preserveAspectRatio='none'%3E%3Cpath d='M0 8 L6 3 L13 7 L21 2 L28 6 L36 1 L44 6 L52 2 L60 7 L68 2 L76 6 L84 1 L92 6 L100 2 L108 7 L116 3 L120 8 Z' fill='%23000'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='8' preserveAspectRatio='none'%3E%3Cpath d='M0 8 L6 3 L13 7 L21 2 L28 6 L36 1 L44 6 L52 2 L60 7 L68 2 L76 6 L84 1 L92 6 L100 2 L108 7 L116 3 L120 8 Z' fill='%23000'/%3E%3C/svg%3E");
+    -webkit-mask-size: 100% 8px;
+    mask-size: 100% 8px;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: top;
+    mask-position: top;
+  }
+
+  /* Torn-paper left edge, for the appointment-ticket stub. */
+  .torn-left {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='120' preserveAspectRatio='none'%3E%3Cpath d='M0 0 L3 6 L7 13 L2 21 L6 28 L1 36 L6 44 L2 52 L7 60 L2 68 L6 76 L1 84 L6 92 L2 100 L7 108 L3 116 L8 120 L0 120 Z' fill='%23000'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='120' preserveAspectRatio='none'%3E%3Cpath d='M0 0 L3 6 L7 13 L2 21 L6 28 L1 36 L6 44 L2 52 L7 60 L2 68 L6 76 L1 84 L6 92 L2 100 L7 108 L3 116 L8 120 L0 120 Z' fill='%23000'/%3E%3C/svg%3E");
+    -webkit-mask-size: 8px 100%;
+    mask-size: 8px 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: left;
+    mask-position: left;
+  }
+
+  /* ---------------------------------------------------------------- *
+   * Poster surfaces
+   *
+   * Deliberately flat and opaque. The previous system used backdrop-blur
+   * panels, which read as glassmorphism; these are printed-paper surfaces.
+   * ---------------------------------------------------------------- */
+
+  /* Kept as a class name because many call sites use it; now flat ink. */
+  .glass {
+    background: var(--color-ink-850);
+    border: 1px solid rgb(255 255 255 / 0.08);
+  }
+
+  .glass-strong {
+    background: var(--color-ink-900);
+    border: 1px solid rgb(255 255 255 / 0.07);
+  }
+
+  /* Hard hairline, no blur. */
+  .ring-gold-hairline {
+    border: 1px solid rgb(245 184 0 / 0.35);
+  }
+
+  /* Kept as a class name; now a solid poster yellow, not a soft sheen. */
+  .text-gradient-gold {
+    background: none;
+    color: var(--color-gold-500);
+    -webkit-background-clip: initial;
+    background-clip: initial;
+  }
+
+  /* Outlined poster headline. `-webkit-text-stroke` paints the outline, the
+     transparent fill lets the photo show through the middle. */
+  .text-outline {
+    color: transparent;
+    -webkit-text-stroke: 2px var(--color-paper);
+    paint-order: stroke fill;
+  }
+
+  .text-outline-yellow {
+    color: transparent;
+    -webkit-text-stroke: 2px var(--color-gold-500);
+    paint-order: stroke fill;
+  }
+
+  /* Sticker: flat sticker with a hard drop shadow and a slight tilt. */
+  .sticker {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    box-shadow: var(--shadow-sticker);
+  }
+
+  /* Halftone dot field, for poster panels. */
+  .halftone {
+    background-image: radial-gradient(
+      currentColor 1px,
+      transparent 1.2px
+    );
+    background-size: 7px 7px;
+  }
+
+  /* Slight rotations so card grids don't read as a spreadsheet. */
+  .tilt-sm {
+    rotate: -0.6deg;
+  }
+  .tilt-md {
+    rotate: 0.8deg;
+  }
+
+  /* Horizontal carousels */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Snap rails */
+  .snap-rail {
+    scroll-snap-type: x mandatory;
+  }
+  .snap-start-item {
+    scroll-snap-align: start;
+  }
+
+  .safe-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom), 0px);
+  }
+
+  /* Respect reduced motion globally */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
