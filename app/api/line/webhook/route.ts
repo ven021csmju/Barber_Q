@@ -23,6 +23,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export async function POST(request: Request) {
   const channelSecret = process.env.LINE_CHANNEL_SECRET;
   if (!channelSecret) {
+    console.error("[LINE webhook] channel secret configured: false");
     return NextResponse.json(
       { error: "LINE_CHANNEL_SECRET is not configured" },
       { status: 500 },
@@ -31,8 +32,14 @@ export async function POST(request: Request) {
 
   const rawBody = await request.text();
   const signature = request.headers.get("x-line-signature");
+  const signaturePresent = Boolean(signature);
+  const signatureValid = isValidSignature(rawBody, signature, channelSecret);
 
-  if (!isValidSignature(rawBody, signature, channelSecret)) {
+  console.info("[LINE webhook] channel secret configured: true");
+  console.info("[LINE webhook] signature header present:", signaturePresent);
+  console.info("[LINE webhook] signature verification result:", signatureValid);
+
+  if (!signatureValid) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 

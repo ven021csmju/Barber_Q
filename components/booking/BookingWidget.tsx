@@ -4,8 +4,9 @@ import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { toPng } from "html-to-image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createBookingWithNotification } from "@/app/actions/booking";
 import { Button } from "@/components/ui/Button";
-import { createBooking, fetchAvailability, fetchSlotDates } from "@/lib/supabase/client-queries";
+import { fetchAvailability, fetchSlotDates } from "@/lib/supabase/client-queries";
 import {
   bookingTouchesSlot,
   slotChangeTouchesDate,
@@ -1062,10 +1063,13 @@ function DayForm({
     }
 
     setSubmitting(true);
-    const res = await createBooking({
+    const res = await createBookingWithNotification({
       customerName: trimmed,
       customerPhone: normalizedPhone,
       timeSlotId: selectedSlot.id,
+      serviceName: service.name,
+      bookingDate: longDate,
+      bookingTime: formatTime12Hour(selectedSlot.start_time) ?? selectedSlot.start_time,
     });
     setSubmitting(false);
     inFlight.current = false;
