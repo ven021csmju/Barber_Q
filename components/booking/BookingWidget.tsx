@@ -895,7 +895,7 @@ function BookingSuccess({
 
         <div className="mt-5 space-y-3">
           <Button fullWidth size="lg" loading={captureState === "working"} onClick={() => void captureBooking()}>
-            {captureState === "working" ? "กำลังสร้างภาพ..." : "บันทึกคิว / ส่งให้ช่าง"}
+            {captureState === "working" ? "กำลังสร้างภาพ..." : "บันทึกคิว"}
           </Button>
           {captureMessage ? <p role="status" className="text-center text-xs text-white/55">{captureMessage}</p> : null}
           {preview ? (
