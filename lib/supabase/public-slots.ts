@@ -2,7 +2,7 @@ import "server-only";
 
 import { createClient } from "./server";
 import type { ISODate, SlotWithAvailability } from "./types";
-import { removeStartedSlots } from "@/lib/utils";
+import { isLunchBreakSlot, removeStartedSlots } from "@/lib/utils";
 
 /**
  * Public availability, read on the server with the publishable key.
@@ -53,10 +53,12 @@ export async function getPublicAvailability(
     ((booked ?? []) as { time_slot_id: number }[]).map((row) => Number(row.time_slot_id)),
   );
 
-  const available = ((data ?? []) as SlotWithAvailability[]).map((slot) => ({
-    ...slot,
-    isBooked: taken.has(Number(slot.id)),
-  }));
+  const available = ((data ?? []) as SlotWithAvailability[])
+    .filter((slot) => !isLunchBreakSlot(slot.start_time, slot.end_time))
+    .map((slot) => ({
+      ...slot,
+      isBooked: taken.has(Number(slot.id)),
+    }));
   const free = available.filter((slot) => !slot.isBooked);
 
   return {

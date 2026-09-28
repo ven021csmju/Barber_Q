@@ -1,8 +1,8 @@
 "use client";
 
 import { getSupabaseClient } from "@/lib/supabase/client";
-import type { ISODate, SlotWithAvailability } from "@/lib/supabase/types";
-import { removeStartedSlots } from "@/lib/utils";
+import type { BookingStatus, ISODate, SlotWithAvailability } from "@/lib/supabase/types";
+import { isLunchBreakSlot, normalizeThaiPhone, removeStartedSlots } from "@/lib/utils";
 
 /**
  * Guest availability for one date.
@@ -79,7 +79,11 @@ export async function fetchAvailability(date: ISODate): Promise<{
   // The RPC returns rows of shape { time_slot_id }, not bare ids.
   const bookedIds = new Set(bookedSlots.map((row) => Number(row.time_slot_id)));
 
-  const availableSlots = slots.filter((slot) => !bookedIds.has(Number(slot.id)));
+  const availableSlots = slots.filter(
+    (slot) =>
+      !bookedIds.has(Number(slot.id)) &&
+      !isLunchBreakSlot(slot.start_time, slot.end_time),
+  );
   const bookableSlots = removeStartedSlots(availableSlots, date);
 
   console.log("[booking] time_slots:", slots);
@@ -127,6 +131,8 @@ export type BookingFailure =
   | "blocked"
   | "not_found"
   | "invalid_name"
+  | "phone_required"
+  | "invalid_phone"
   | "expired"
   | "config"
   | "error";
@@ -134,7 +140,7 @@ export type BookingFailure =
 /**
  * Create a guest booking -- ONE database call.
  *
- * This is `create_booking(p_customer_name, p_time_slot_id)`, an atomic
+ * This is `create_booking(p_customer_name, p_customer_phone, p_time_slot_id)`, an atomic
  * function, not a select/check/insert sequence. The guest role has no INSERT
  * privilege on `bookings` at all, so this RPC is the only way a booking can
  * exist; the frontend has no way to skip the check even by accident.
@@ -146,8 +152,12 @@ export type BookingFailure =
  */
 export async function createBooking(input: {
   customerName: string;
+  customerPhone: string;
   timeSlotId: number;
-}): Promise<{ ok: true; bookingId: number } | { ok: false; reason: BookingFailure }> {
+}): Promise<
+  | { ok: true; bookingId: number; status: BookingStatus }
+  | { ok: false; reason: BookingFailure }
+> {
   const supabase = getSupabaseClient();
 
   if (!supabase) {
@@ -156,6 +166,7 @@ export async function createBooking(input: {
 
   const { data, error } = await supabase.rpc("create_booking", {
     p_customer_name: input.customerName.trim(),
+    p_customer_phone: normalizeThaiPhone(input.customerPhone),
     p_time_slot_id: input.timeSlotId,
   });
 
@@ -179,7 +190,13 @@ export async function createBooking(input: {
     return { ok: false, reason: reasonFromFailureText(payloadField(data, "reason")) };
   }
 
-  return { ok: true, bookingId: extractBookingId(data) };
+  const rawStatus = payloadField(data, "status");
+  const status: BookingStatus =
+    rawStatus === "confirmed" || rawStatus === "completed" || rawStatus === "cancelled"
+      ? rawStatus
+      : "pending";
+
+  return { ok: true, bookingId: extractBookingId(data), status };
 }
 
 /**
@@ -204,6 +221,8 @@ const RAISED_REASONS: Record<string, BookingFailure> = {
   TIME_SLOT_NOT_AVAILABLE: "blocked",
   TIME_SLOT_NOT_FOUND: "not_found",
   CUSTOMER_NAME_REQUIRED: "invalid_name",
+  CUSTOMER_PHONE_REQUIRED: "phone_required",
+  INVALID_CUSTOMER_PHONE: "invalid_phone",
   // The slot's start time passed in shop time while the guest was deciding, or
   // the date is already behind us. A distinct reason from `taken` so the guest
   // is told to pick another time instead of being told the slot was taken.
@@ -223,6 +242,8 @@ function reasonFromFailureText(raw: unknown): BookingFailure {
     lower === "blocked" ||
     lower === "not_found" ||
     lower === "invalid_name" ||
+    lower === "phone_required" ||
+    lower === "invalid_phone" ||
     lower === "expired"
   ) {
     return lower;

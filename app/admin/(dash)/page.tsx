@@ -22,6 +22,10 @@ export default async function AdminDashboardPage() {
   const todayQueue = all.filter(
     (b) => b.date === today && (b.status === "pending" || b.status === "confirmed"),
   );
+  todayQueue.sort((a, b) => {
+    if (a.status !== b.status) return a.status === "pending" ? -1 : 1;
+    return (a.time ?? "99:99").localeCompare(b.time ?? "99:99");
+  });
 
   return (
     <div>

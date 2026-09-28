@@ -1,77 +1,132 @@
 import { BookingWidget } from "@/components/booking/BookingWidget";
-import { ScissorsMark } from "@/components/poster/Poster";
+import { ImageRail } from "@/components/customer/ImageRail";
 import { getPublicAvailability } from "@/lib/supabase/public-slots";
 import { shopToday } from "@/lib/utils";
 
-/** Availability is live data; the page must never be cached. */
 export const dynamic = "force-dynamic";
 
-/**
- * The homepage IS the booking page.
- *
- * No hero image, no services, no barbers, no promotions above the fold: the
- * shop name and the calendar are the first and only thing on screen, so a guest
- * can start booking in two seconds.
- *
- * Today's slots are read on the server so the grid is populated in the first
- * paint, instead of flashing an empty calendar while the browser fetches.
- */
+const GALLERY = [
+  { src: "/barber/S__4653084.jpg", alt: "Classic men's haircut detail" },
+  { src: "/barber/S__4653082.jpg", alt: "Flook barber shaping a haircut" },
+  { src: "/barber/S__4653081.jpg", alt: "Textured haircut from the side" },
+  { src: "/barber/S__4653079.jpg", alt: "Barber tools and haircut session" },
+];
+
 export default async function HomePage() {
   const today = shopToday();
   const { slots, totalAvailable, error } = await getPublicAvailability(today);
 
   return (
-    <div className="space-y-5">
-      <header className="relative overflow-hidden rounded-3xl bg-green-800 px-4 py-5">
-        <div aria-hidden className="halftone absolute inset-0 opacity-[0.08]" />
-        <ScissorsMark
-          aria-hidden
-          className="absolute -right-3 -bottom-3 size-28 rotate-12 text-gold-500/12"
-        />
-
-        <div className="relative">
-          <p className="font-display text-[0.7rem] font-bold tracking-[0.32em] text-gold-400 uppercase">
-            FLOOK
-          </p>
-          <h1 className="font-display mt-1 text-[2rem] leading-none font-bold text-white">
-            FLOOK BARBER
-          </h1>
-          <p className="font-display mt-2 text-lg font-bold text-gold-500">จองคิวตัดผม</p>
-          <p className="mt-1 text-sm text-white/65">เลือกวันที่ เลือกเวลา กรอกชื่อ กดจองเสร็จ</p>
+    <div className="space-y-20 pb-8 sm:space-y-28">
+      <nav className="flex items-center justify-between border-b border-white/15 py-5" aria-label="Main navigation">
+        <a href="#top" className="font-display text-sm font-bold tracking-[0.24em] text-white">
+          FLOOK <span className="text-white/35">/ BARBER</span>
+        </a>
+        <div className="hidden items-center gap-7 text-[0.65rem] font-bold tracking-[0.2em] text-white/50 uppercase sm:flex">
+          <a href="#services" className="transition-colors hover:text-white">Services</a>
+          <a href="#booking" className="transition-colors hover:text-white">Book</a>
+          <a href="#gallery" className="transition-colors hover:text-white">Gallery</a>
         </div>
+        <a
+          href="#booking"
+          className="rounded-full border border-white/30 px-3.5 py-2 text-[0.65rem] font-bold tracking-[0.16em] text-white uppercase transition-colors hover:bg-white hover:text-ink-950"
+        >
+          Book now
+        </a>
+      </nav>
+
+      <header id="top" className="-mt-10 space-y-8 sm:-mt-12">
+        <div className="max-w-3xl">
+          <p className="text-[0.65rem] font-bold tracking-[0.32em] text-white/45 uppercase">Flook Barber Shop · Est. 2020</p>
+          <h1 id="hero-title" className="mt-5 max-w-xl font-serif text-[4.5rem] leading-[0.78] tracking-[-0.08em] text-white sm:text-[7rem] lg:text-[8.5rem]">
+            Flook
+            <span className="block pl-8 text-white/45">Barber</span>
+          </h1>
+          <p className="mt-8 max-w-sm text-sm leading-7 text-white/55">
+            Precision cuts, quiet confidence, and a chair reserved for your next look.
+          </p>
+        </div>
+
+        <div className="min-w-0">
+          <ImageRail
+            labelledBy="hero-title"
+            images={[
+              { src: "/barber/S__4653082.jpg", alt: "Flook barber giving a haircut" },
+              { src: "/barber/S__4653079.jpg", alt: "Flook barber shaping a textured cut" },
+              { src: "/barber/S__4653084.jpg", alt: "Finished classic men's haircut" },
+            ]}
+            cardClassName="w-full sm:w-[62vw] lg:w-[46vw]"
+            aspectClassName="aspect-[4/5]"
+            frameless
+          />
+          <p className="mt-4 text-[0.6rem] font-bold tracking-[0.25em] text-white/50 uppercase">Precision / Style / Confidence</p>
+        </div>
+
+        <a
+          href="#booking"
+          className="inline-flex min-h-12 items-center rounded-full bg-white px-6 text-xs font-bold tracking-[0.18em] text-ink-950 uppercase transition-transform hover:-translate-y-1"
+        >
+          Book appointment <span className="ml-5 text-base">↗</span>
+        </a>
       </header>
 
-      <BookingWidget
-        initialDate={today}
-        initialSlots={slots}
-        initialTotalAvailable={totalAvailable}
-        initialError={error}
-      />
+      <section id="booking" className="scroll-mt-6">
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-white/15 pb-5">
+          <div>
+            <p className="text-[0.65rem] font-bold tracking-[0.28em] text-white/40 uppercase">02 / Reserve a chair</p>
+            <h2 className="mt-2 font-serif text-4xl tracking-[-0.04em] text-white sm:text-5xl">Make it yours.</h2>
+          </div>
+          <p className="max-w-xs text-right text-xs leading-5 text-white/45">Live availability from the shop. Choose a service, date and time.</p>
+        </div>
+        <BookingWidget
+          initialDate={today}
+          initialSlots={slots}
+          initialTotalAvailable={totalAvailable}
+          initialError={error}
+        />
+      </section>
 
-      <section
-        aria-labelledby="contact-shop"
-        className="rounded-3xl bg-ink-900 p-4 ring-1 ring-white/10"
-      >
-        <h2 id="contact-shop" className="font-display text-base font-bold text-white">
-          ติดต่อร้าน
-        </h2>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          <a
-            href="tel:0805211831"
-            className="flex min-h-12 items-center justify-center rounded-2xl bg-green-800 px-4 text-sm font-bold text-white transition-colors hover:bg-green-700"
-          >
-            โทร 080 521 1831
-          </a>
-          <a
-            href="https://www.facebook.com/Aphidet.Phaithean"
-            target="_blank"
-            rel="noreferrer"
-            className="flex min-h-12 items-center justify-center rounded-2xl bg-blue-700 px-4 text-sm font-bold text-white transition-colors hover:bg-blue-600"
-          >
-            Facebook: Aphidet Phaithean
-          </a>
+      <section id="barber" className="grid scroll-mt-6 gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center lg:gap-16">
+        <ImageRail
+          labelledBy="barber-title"
+          images={[
+            { src: "/barber/S__4653079.jpg", alt: "The Flook barber at work" },
+            { src: "/barber/S__4653080.jpg", alt: "Textured haircut profile" },
+            { src: "/barber/S__4653081.jpg", alt: "Clean side profile haircut" },
+          ]}
+          cardClassName="w-[78vw] sm:w-[42vw] lg:w-[24vw]"
+          aspectClassName="aspect-[4/5]"
+        />
+        <div>
+          <p className="text-[0.65rem] font-bold tracking-[0.28em] text-white/40 uppercase">03 / The barber</p>
+          <h2 id="barber-title" className="mt-4 font-serif text-5xl leading-[0.9] tracking-[-0.05em] text-white sm:text-7xl">One barber.<br /><span className="text-white/40">One standard.</span></h2>
+          <p className="mt-7 max-w-lg text-sm leading-7 text-white/55">A single-chair studio built around detail. Every cut is shaped with intention, from the first section to the final finish.</p>
+          <div className="mt-8 grid max-w-md grid-cols-2 border-y border-white/15 py-4 text-[0.65rem] font-bold tracking-[0.18em] text-white/45 uppercase">
+            <span>Open daily</span><span className="text-right text-white">09:00 — 21:00</span>
+          </div>
         </div>
       </section>
+
+      <section id="gallery" className="scroll-mt-6">
+        <div className="flex items-end justify-between border-b border-white/15 pb-5">
+          <div><p className="text-[0.65rem] font-bold tracking-[0.28em] text-white/40 uppercase">04 / Work</p><h2 id="gallery-title" className="mt-2 font-serif text-4xl tracking-[-0.04em] text-white sm:text-5xl">In the chair.</h2></div>
+          <span className="hidden text-[0.65rem] font-bold tracking-[0.2em] text-white/35 uppercase sm:block">Selected cuts</span>
+        </div>
+        <div className="mt-8">
+          <ImageRail
+            labelledBy="gallery-title"
+            images={GALLERY}
+            cardClassName="w-[82vw] sm:w-[48vw] lg:w-[38vw]"
+            aspectClassName="aspect-[4/5]"
+          />
+        </div>
+      </section>
+
+      <footer className="grid gap-8 border-t border-white/15 pt-8 sm:grid-cols-2 lg:grid-cols-3">
+        <div><p className="text-[0.65rem] font-bold tracking-[0.25em] text-white/40 uppercase">Flook Barber Shop</p><p className="mt-3 font-serif text-3xl text-white">See you in the chair.</p></div>
+        <div className="text-sm leading-7 text-white/55"><p>09:00 — 21:00</p><p>Lunch break · 12:00 — 13:00</p><a href="tel:0805211831" className="text-white underline underline-offset-4">080 521 1831</a></div>
+        <div className="flex gap-5 text-[0.65rem] font-bold tracking-[0.18em] text-white/60 uppercase sm:justify-end"><a href="https://www.instagram.com/flook_barber/" target="_blank" rel="noreferrer" className="hover:text-white">Instagram</a><a href="https://maps.app.goo.gl/5Gfn126DCQEFGiSb8?g_st=ic" target="_blank" rel="noreferrer" className="hover:text-white">Google Maps</a></div>
+      </footer>
     </div>
   );
 }

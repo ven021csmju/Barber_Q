@@ -173,6 +173,8 @@ export function canTransitionBooking(from: BookingStatus, to: BookingStatus): bo
 export type Booking = {
   id: number;
   customer_name: string;
+  /** Nullable for bookings created before phone collection was added. */
+  customer_phone: string | null;
   /** FK -> time_slots.id */
   time_slot_id: number;
   status: BookingStatus;
@@ -182,6 +184,7 @@ export type Booking = {
 
 export type BookingInsert = {
   customer_name: string;
+  customer_phone?: string | null;
   time_slot_id: number;
   status?: BookingStatus;
 };
@@ -271,11 +274,12 @@ export type Database = {
        * rather than raising, so a lost race is an ordinary outcome.
        */
       create_booking: {
-        Args: { p_customer_name: string; p_time_slot_id: number };
-        Returns:
-          | { ok: true; bookingId: number }
-          | { ok: false; reason: "taken" | "blocked" | "not_found" | "invalid_name" }
-          | null;
+        Args: {
+          p_customer_name: string;
+          p_customer_phone: string;
+          p_time_slot_id: number;
+        };
+        Returns: Booking;
       };
       booked_slot_ids: {
         Args: { p_date: ISODate };

@@ -81,6 +81,22 @@ export function timeToMinutes(time: string) {
   return (h ?? 0) * 60 + (m ?? 0);
 }
 
+/** The shop is closed for lunch from 12:00 through 13:00. */
+export function isLunchBreakSlot(startTime: string, endTime: string): boolean {
+  const start = timeToMinutes(startTime);
+  const end = timeToMinutes(endTime);
+  return start < 13 * 60 && end > 12 * 60;
+}
+
+/** Normalise a Thai mobile number to the ten-digit form stored by the RPC. */
+export function normalizeThaiPhone(value: string): string {
+  return value.trim().replace(/[^0-9]/g, "");
+}
+
+export function isValidThaiPhone(value: string): boolean {
+  return /^0[689][0-9]{8}$/.test(normalizeThaiPhone(value));
+}
+
 /* ------------------------------------------------------------------ *
  * shop time (Asia/Bangkok)
  *
@@ -156,13 +172,26 @@ export function removeStartedSlots<T extends { start_time: string }>(
 }
 
 /**
- * Postgres `time` comes back as "09:00:00". The UI shows "09:00".
+ * Postgres `time` comes back as "09:00:00". The UI shows "9:00".
  */
 export function formatClockTime(time: string | null | undefined) {
   if (!time) return null;
   const [h, m] = time.split(":");
   if (h === undefined) return time;
-  return m === "00" || m === undefined ? h : `${h}:${m}`;
+  const hour = h.replace(/^0+(?=\d)/, "");
+  return m === "00" || m === undefined ? hour : `${hour}:${m}`;
+}
+
+/** Presentation-only 12-hour time for customer-facing slot buttons. */
+export function formatTime12Hour(time: string | null | undefined) {
+  if (!time) return null;
+  const [rawHour, rawMinute] = time.split(":");
+  const hour = Number(rawHour);
+  if (!Number.isFinite(hour) || rawMinute === undefined) return time;
+
+  const suffix = hour >= 12 ? "PM" : "AM";
+  const displayHour = hour % 12 || 12;
+  return `${String(displayHour).padStart(2, "0")}:${rawMinute} ${suffix}`;
 }
 
 /* ------------------------------------------------------------------ *

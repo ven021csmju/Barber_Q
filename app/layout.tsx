@@ -1,4 +1,4 @@
-import type { Metadata, Viewport } from "next";
+  import type { Metadata, Viewport } from "next";
 import { Bai_Jamjuree, IBM_Plex_Sans_Thai, Sora } from "next/font/google";
 import "./globals.css";
 
@@ -7,6 +7,7 @@ const plexThai = IBM_Plex_Sans_Thai({
   subsets: ["thai", "latin"],
   weight: ["300", "400", "500", "600", "700"],
   display: "swap",
+  preload: false,
 });
 
 /** Poster display face. Covers Thai + Latin so headlines need no fallback. */
@@ -15,6 +16,7 @@ const bai = Bai_Jamjuree({
   subsets: ["thai", "latin"],
   weight: ["400", "500", "600", "700"],
   display: "swap",
+  preload: false,
 });
 
 /** Latin-only, kept for tabular numerals and small caps labels. */
@@ -23,6 +25,7 @@ const sora = Sora({
   subsets: ["latin"],
   weight: ["500", "600", "700"],
   display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -31,7 +34,7 @@ export const metadata: Metadata = {
     template: "%s · FLOOK BARBER",
   },
   description:
-    "FLOOK BARBER — ระบบจองคิวตัดผมออนไลน์ เลือกบริการ เลือกช่าง เลือกวันและเวลาที่สะดวก",
+    "FLOOK BARBER — precision cuts, modern style, and online appointments.",
   applicationName: "FLOOK BARBER",
   appleWebApp: {
     capable: true,

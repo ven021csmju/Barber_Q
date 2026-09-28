@@ -108,6 +108,16 @@ export function BookingList({ bookings }: { bookings: BookingWithRefs[] }) {
                 <p className="font-display truncate text-sm font-bold text-white">
                   {booking.customer_name}
                 </p>
+                {booking.customer_phone ? (
+                  <a
+                    href={`tel:${booking.customer_phone}`}
+                    className="block truncate text-xs font-bold text-gold-500 hover:text-gold-400"
+                  >
+                    โทร {booking.customer_phone}
+                  </a>
+                ) : (
+                  <p className="text-xs text-white/35">ไม่ระบุเบอร์โทร</p>
+                )}
                 <p className="truncate text-xs text-white/40">
                   #{booking.id}
                   {booking.timeSlot

@@ -22,7 +22,8 @@ const MAX_AGE_SECONDS = 60 * 60 * 12;
 
 function passcode(): string | null {
   const value = process.env.ADMIN_PASSCODE;
-  return value && value.length > 0 ? value : null;
+  const normalized = value?.trim();
+  return normalized && normalized.length > 0 ? normalized : null;
 }
 
 function token(): string | null {
@@ -37,7 +38,7 @@ export function verifyPasscode(candidate: string): boolean {
   if (!expected) return false;
 
   const given = Buffer.from(
-    createHmac("sha256", candidate).update("aphidet-admin-session").digest("hex"),
+    createHmac("sha256", candidate.trim()).update("aphidet-admin-session").digest("hex"),
   );
   const want = Buffer.from(expected);
 

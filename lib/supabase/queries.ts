@@ -187,7 +187,7 @@ export const getBookings = cache(
 
     let bookingQuery = supabase
       .from("bookings")
-      .select("id,customer_name,time_slot_id,status,created_at,updated_at")
+      .select("id,customer_name,customer_phone,time_slot_id,status,created_at,updated_at")
       .in("time_slot_id", slots.map((s) => s.id));
 
     if (filter.status && filter.status.length > 0) {
@@ -204,7 +204,10 @@ export const getBookings = cache(
       joined = joined.filter((b) => b.customer_name.toLowerCase().includes(needle));
     }
 
-    joined.sort((a, b) => (a.time ?? "99:99").localeCompare(b.time ?? "99:99"));
+    joined.sort((a, b) => {
+      if (a.status !== b.status) return a.status === "pending" ? -1 : 1;
+      return (a.time ?? "99:99").localeCompare(b.time ?? "99:99");
+    });
     return ok(joined);
   },
 );
@@ -223,7 +226,7 @@ export async function getAllBookings(): Promise<QueryResult<BookingWithRefs[]>> 
 
   const { data: bookings, error: bookingError } = await supabase
     .from("bookings")
-    .select("id,customer_name,time_slot_id,status,created_at,updated_at")
+    .select("id,customer_name,customer_phone,time_slot_id,status,created_at,updated_at")
     .in("time_slot_id", (slots as TimeSlot[]).map((s) => s.id));
 
   if (bookingError) return fail("getAllBookings(rows)", bookingError, []);
@@ -317,6 +320,7 @@ export const getSlotOverview = cache(
         activeBySlot.set(booking.time_slot_id, {
           id: booking.id,
           customer_name: booking.customer_name,
+          customer_phone: booking.customer_phone,
           time_slot_id: booking.time_slot_id,
           status: booking.status,
           created_at: booking.created_at,

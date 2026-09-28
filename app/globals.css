@@ -23,31 +23,31 @@
   --color-ink-600: #3a3a3a;
   --color-ink-500: #4c4c4c;
 
-  /* ---- barber green ---- */
-  --color-green-950: #0a1f11;
-  --color-green-900: #0f2c19;
-  --color-green-800: #173d25; /* --green */
-  --color-green-700: #1f5230;
-  --color-green-600: #2e6b35; /* --green-light */
-  --color-green-500: #3b8043;
+  /* ---- monochrome surfaces (legacy token names remain for call sites) ---- */
+  --color-green-950: #0a0a0a;
+  --color-green-900: #111111;
+  --color-green-800: #252525;
+  --color-green-700: #333333;
+  --color-green-600: #4a4a4a;
+  --color-green-500: #666666;
 
-  /* ---- barber yellow (the former "gold" ramp) ---- */
-  --color-gold-200: #ffebb0;
-  --color-gold-300: #ffd85c;
-  --color-gold-400: #ffc400; /* --yellow-bright */
-  --color-gold-500: #f5b800; /* --yellow */
-  --color-gold-600: #d69c00;
-  --color-gold-700: #a67a00;
+  /* ---- editorial white (the former "gold" ramp) ---- */
+  --color-gold-200: #ffffff;
+  --color-gold-300: #f5f5f5;
+  --color-gold-400: #eeeeee;
+  --color-gold-500: #dddddd;
+  --color-gold-600: #bdbdbd;
+  --color-gold-700: #888888;
 
   /* ---- warm off-white (poster paper) ---- */
   --color-paper: #f5f2e8;
   --color-paper-dim: #e7e2d4;
 
   /* ---- semantic status ---- */
-  --color-success: #46b36a;
-  --color-warning: #ffc400;
-  --color-danger: #e04a3a;
-  --color-info: #7dd3fc;
+  --color-success: #d9d9d9;
+  --color-warning: #eeeeee;
+  --color-danger: #bdbdbd;
+  --color-info: #aaaaaa;
 
   --font-sans: var(--font-plex-thai), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", sans-serif;
@@ -140,16 +140,8 @@
     z-index: -2;
     pointer-events: none;
     background:
-      radial-gradient(
-        100% 55% at 100% 0%,
-        rgb(245 184 0 / 0.09) 0%,
-        transparent 58%
-      ),
-      radial-gradient(
-        90% 50% at 0% 100%,
-        rgb(23 61 37 / 0.55) 0%,
-        transparent 60%
-      );
+      radial-gradient(80% 50% at 100% 0%, rgb(255 255 255 / 0.08) 0%, transparent 60%),
+      radial-gradient(90% 50% at 0% 100%, rgb(100 100 100 / 0.18) 0%, transparent 65%);
   }
 
   /* Distress grain, above the ground wash and below content. */

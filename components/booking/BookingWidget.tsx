@@ -1,6 +1,8 @@
 "use client";
 
-import { motion, useReducedMotion } from "motion/react";
+import Image from "next/image";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { toPng } from "html-to-image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { createBooking, fetchAvailability, fetchSlotDates } from "@/lib/supabase/client-queries";
@@ -11,10 +13,13 @@ import {
   useTableChanges,
   type TableChange,
 } from "@/lib/supabase/realtime";
-import type { ISODate, SlotWithAvailability } from "@/lib/supabase/types";
+import type { BookingStatus, ISODate, SlotWithAvailability } from "@/lib/supabase/types";
 import {
   cn,
-  formatClockTime,
+  formatTime12Hour,
+  isValidThaiPhone,
+  isLunchBreakSlot,
+  normalizeThaiPhone,
   shopToday,
   slotHasStarted,
   toISODate,
@@ -25,6 +30,59 @@ import {
 const MAX_DAYS_AHEAD = 60;
 
 const WEEKDAY_LABELS = ["จ", "อ", "พ", "พฤ", "ศ", "ส", "อ"] as const;
+
+const SERVICES = [
+  {
+    name: "Men's Haircut",
+    detail: "Classic cut",
+    description: "ทรงคลาสสิกที่เก็บรายละเอียดรอบกรอบหน้าและท้ายทอยอย่างพอดี",
+    price: "฿100",
+    eyebrow: "01 / CLASSIC",
+    image: null,
+  },
+  {
+    name: "Volume Perm",
+    detail: "Soft volume and shape",
+    description: "เพิ่มวอลลุ่มและรูปทรงให้เส้นผมดูมีมิติ พร้อม styling ที่ดูเป็นธรรมชาติ",
+    price: "฿700–1,000",
+    eyebrow: "02 / VOLUME",
+    image: "/images/services/volume-perm.png",
+  },
+  {
+    name: "Curly Perm",
+    detail: "Defined natural curl",
+    description: "ลอนหยิกที่ชัดขึ้นแต่ยังคง movement ของเส้นผมและ texture ที่ดูสะอาด",
+    price: "฿700–1,000",
+    eyebrow: "03 / CURL",
+    image: "/images/services/curly-perm.png",
+  },
+  {
+    name: "Messy Perm",
+    detail: "Texture with attitude",
+    description: "เพิ่ม texture แบบเซอร์ ๆ ให้ทรงผมมี movement และจัดทรงได้ง่ายในทุกวัน",
+    price: "฿700–1,000",
+    eyebrow: "04 / MESSY",
+    image: "/images/services/messy-perm.png",
+  },
+  {
+    name: "Down Perm",
+    detail: "Clean, controlled sides",
+    description: "กดเส้นผมด้านข้างให้เข้าทรง เนี้ยบขึ้น และดูสมดุลกับรูปหน้า",
+    price: "฿200–500",
+    eyebrow: "05 / DOWN",
+    image: "/images/services/down-perm.png",
+  },
+  {
+    name: "Up Perm",
+    detail: "Lifted styling and form",
+    description: "ยกโคนและเพิ่ม form ให้ผมด้านบนดูมีทิศทางและมี volume มากขึ้น",
+    price: "฿200–500",
+    eyebrow: "06 / UP",
+    image: "/images/services/up-perm.png",
+  },
+] as const;
+
+type Service = (typeof SERVICES)[number];
 
 const monthFormatter = new Intl.DateTimeFormat("th-TH", {
   month: "long",
@@ -50,6 +108,106 @@ function isSameDay(a: Date, b: Date): boolean {
     a.getFullYear() === b.getFullYear() &&
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate()
+  );
+}
+
+function ServicePicker({
+  selected,
+  onSelect,
+}: {
+  selected: Service | null;
+  onSelect: (service: Service) => void;
+}) {
+  const rail = useRef<HTMLDivElement>(null);
+
+  function scrollServices(direction: -1 | 1) {
+    rail.current?.scrollBy({
+      left: direction * (rail.current.clientWidth * 0.72),
+      behavior: "smooth",
+    });
+  }
+
+  return (
+    <section id="services" aria-labelledby="pick-service" className="scroll-mt-6 rounded-[1.75rem] border border-white/15 bg-ink-900 p-4 sm:p-6">
+      <div className="flex items-end justify-between gap-3 border-b border-white/10 pb-4">
+        <div>
+          <p className="text-[0.6rem] font-bold tracking-[0.25em] text-white/35 uppercase">01 / Service</p>
+          <h2 id="pick-service" className="mt-1 font-serif text-3xl tracking-[-0.04em] text-white">Choose your look.</h2>
+        </div>
+        {selected ? <span className="text-[0.65rem] font-bold tracking-[0.15em] text-white/45 uppercase">Selected</span> : null}
+      </div>
+      <div ref={rail} className="no-scrollbar mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth overscroll-x-contain px-1 py-1 touch-pan-x">
+        {SERVICES.map((service) => {
+          const active = selected?.name === service.name;
+          return (
+            <motion.div
+              key={service.name}
+              layout
+              className={cn(
+                "w-[78vw] shrink-0 snap-center overflow-hidden rounded-2xl border text-left transition-colors duration-300 sm:w-[42vw] lg:w-[29vw]",
+                active
+                  ? "border-white bg-white text-ink-950"
+                  : "border-white/12 bg-ink-800 text-white hover:border-white/45",
+              )}
+            >
+              <button
+                type="button"
+                aria-pressed={active}
+                aria-expanded={active}
+                onClick={() => onSelect(service)}
+                className="flex min-h-[4.5rem] w-full items-center justify-between gap-3 px-4 py-3 text-left"
+              >
+                <span className="min-w-0">
+                  <span className={cn("block text-[0.6rem] font-bold tracking-[0.18em] uppercase", active ? "text-ink-950/50" : "text-white/35")}>
+                    {service.eyebrow}
+                  </span>
+                  <span className="mt-1 block truncate font-display text-sm font-bold tracking-tight">{service.name}</span>
+                  <span className={cn("mt-1 block truncate text-xs", active ? "text-ink-950/55" : "text-white/40")}>{service.detail}</span>
+                </span>
+                <span className="flex shrink-0 items-center gap-3">
+                  <span className={cn("text-xs font-bold", active ? "text-ink-950" : "text-white/70")}>{service.price}</span>
+                  <span aria-hidden className={cn("grid size-7 place-items-center rounded-full border text-lg font-light leading-none", active ? "border-ink-950/30" : "border-white/20")}>{active ? "−" : "+"}</span>
+                </span>
+              </button>
+
+              <AnimatePresence initial={false}>
+                {active ? (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                    className="overflow-hidden"
+                  >
+                      <div className="border-t border-ink-950/15 p-3">
+                        {service.image ? (
+                          <div className="relative h-44 overflow-visible rounded-xl bg-transparent sm:h-52">
+                            <Image
+                              src={service.image}
+                              alt={`${service.name} hairstyle reference`}
+                              fill
+                              sizes="(max-width: 640px) 78vw, (max-width: 1024px) 42vw, 29vw"
+                              className="object-contain grayscale"
+                            />
+                            <span className="absolute bottom-3 left-3 rounded-full bg-black/65 px-2.5 py-1 text-[0.55rem] font-bold tracking-[0.16em] text-white uppercase">{service.name}</span>
+                          </div>
+                        ) : null}
+                      <div className="px-1 pb-1 pt-3">
+                        <p className={cn("text-sm leading-6", active ? "text-ink-950/65" : "text-white/60")}>{service.description}</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+            </motion.div>
+          );
+        })}
+      </div>
+      <div className="mt-4 hidden justify-end gap-2 sm:flex">
+        <button type="button" onClick={() => scrollServices(-1)} aria-label="Previous service" className="grid size-9 place-items-center rounded-full border border-white/20 text-white transition-colors hover:bg-white hover:text-ink-950">←</button>
+        <button type="button" onClick={() => scrollServices(1)} aria-label="Next service" className="grid size-9 place-items-center rounded-full border border-white/20 text-white transition-colors hover:bg-white hover:text-ink-950">→</button>
+      </div>
+    </section>
   );
 }
 
@@ -286,7 +444,7 @@ function SlotGrid({
   return (
     <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="เลือกเวลา">
       {slots.map((slot) => {
-        const time = formatClockTime(slot.start_time) ?? slot.start_time;
+        const time = formatTime12Hour(slot.start_time) ?? slot.start_time;
         const disabled = slot.isBooked;
         const active = slot.id === selectedId;
 
@@ -319,7 +477,7 @@ function SlotGrid({
 }
 
 /**
- * The whole guest experience: date -> time -> name -> book.
+ * The whole guest experience: service -> date -> time -> name -> book.
  *
  * There is no account, no wizard and no extra screen. Availability arrives
  * pre-rendered from the server, and is re-read from the database on every date
@@ -361,7 +519,16 @@ export function BookingWidget({
 
   const [name, setName] = useState("");
   const [nameError, setNameError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ name: string; time: string } | null>(null);
+  const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [result, setResult] = useState<{
+    name: string;
+    phone: string;
+    service: string;
+    status: BookingStatus;
+    time: string;
+  } | null>(null);
   const [availableDates, setAvailableDates] = useState<Set<ISODate>>(
     () => (initialSlots.length > 0 ? new Set([initialDate]) : new Set()),
   );
@@ -491,15 +658,33 @@ export function BookingWidget({
   });
 
   if (result) {
-    return <BookingSuccess result={result} date={date} onAgain={() => {
-      setResult(null);
-      setName("");
-      void load(date);
-    }} />;
+    return (
+      <BookingSuccess
+        result={result}
+        date={date}
+        onClose={() => setResult(null)}
+        onAgain={() => {
+          setResult(null);
+          setName("");
+          setPhone("");
+          setNameError(null);
+          setPhoneError(null);
+          setSelectedService(null);
+          void load(date);
+        }}
+      />
+    );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      <div className="grid grid-cols-4 gap-1 border-y border-white/10 py-3 text-[0.55rem] font-bold tracking-[0.15em] text-white/35 uppercase sm:text-[0.65rem]">
+        <span className="text-white">01 Service</span>
+        <span>02 Date</span>
+        <span>03 Time</span>
+        <span className="text-right">04 Details</span>
+      </div>
+      <ServicePicker selected={selectedService} onSelect={setSelectedService} />
       <DateCalendar
         selected={date}
         availableDates={availableDates}
@@ -515,10 +700,18 @@ export function BookingWidget({
         loadError={loadError}
         name={name}
         nameError={nameError}
+        phone={phone}
+        phoneError={phoneError}
+        service={selectedService}
         onNameChange={(value) => {
           setName(value);
           if (nameError) setNameError(null);
         }}
+        onPhoneChange={(value) => {
+          setPhone(value);
+          if (phoneError) setPhoneError(null);
+        }}
+        onPhoneError={setPhoneError}
         onBooked={setResult}
         onSlotLost={() => void load(date)}
       />
@@ -530,52 +723,206 @@ export function BookingWidget({
 function BookingSuccess({
   result,
   date,
+  onClose,
   onAgain,
 }: {
-  result: { name: string; time: string };
+  result: { name: string; phone: string; service: string; status: BookingStatus; time: string };
   date: ISODate;
+  onClose: () => void;
   onAgain: () => void;
 }) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const [captureState, setCaptureState] = useState<"idle" | "working" | "done" | "error">("idle");
+  const [captureMessage, setCaptureMessage] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeRef.current?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab" || !dialogRef.current) return;
+
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
+    };
+  }, [onClose]);
+
+  async function captureBooking() {
+    if (!cardRef.current) return;
+
+    setCaptureState("working");
+    setCaptureMessage(null);
+
+    try {
+      const dataUrl = await toPng(cardRef.current, {
+        backgroundColor: "#0b0b0b",
+        cacheBust: true,
+        pixelRatio: 2,
+      });
+      setPreview(dataUrl);
+
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      const file = new File([blob], "flook-booking-confirmation.png", { type: "image/png" });
+
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          title: "Flook Barber Shop booking",
+          text: "Booking confirmation from Flook Barber Shop",
+          files: [file],
+        });
+        setCaptureMessage("พร้อมส่งให้ช่างแล้ว");
+      } else {
+        const link = document.createElement("a");
+        link.download = "flook-booking-confirmation.png";
+        link.href = dataUrl;
+        link.click();
+        setCaptureMessage("บันทึกภาพคิวแล้ว");
+      }
+      setCaptureState("done");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        setCaptureMessage("ยกเลิกการส่งแล้ว สามารถกดค้างที่รูปเพื่อบันทึกได้");
+        setCaptureState("done");
+        return;
+      }
+      console.error("[booking] confirmation capture failed:", error);
+      setCaptureState("error");
+      setCaptureMessage("สร้างภาพไม่สำเร็จ กดค้างที่การ์ดเพื่อบันทึกภาพ");
+    }
+  }
+
   return (
-    <motion.section
+    <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
-      className="rounded-3xl bg-green-800 p-6 text-center ring-1 ring-gold-500/40"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/75 p-3 backdrop-blur-[2px] sm:p-6"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
     >
-      <div
-        aria-hidden
-        className="mx-auto grid size-14 -rotate-3 place-items-center rounded-full bg-gold-500 text-ink-950"
+      <motion.section
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="booking-success-title"
+        tabIndex={-1}
+        initial={{ scale: 0.96, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.24, ease: "easeOut" }}
+        className="relative my-auto flex max-h-[90vh] w-full max-w-lg flex-col overflow-y-auto rounded-[1.75rem] border border-white/20 bg-ink-900 shadow-2xl shadow-black/60"
       >
-        <svg viewBox="0 0 24 24" className="size-7" fill="none" stroke="currentColor" strokeWidth={3}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="m5 12.5 4.5 4.5L19 7.5" />
-        </svg>
-      </div>
+        <button
+          ref={closeRef}
+          type="button"
+          onClick={onClose}
+          aria-label="ปิดหน้าต่างยืนยันการจอง"
+          className="absolute top-4 right-4 z-10 grid size-10 place-items-center rounded-full border border-white/20 text-xl text-white/70 transition-colors hover:bg-white hover:text-ink-950"
+        >
+          ×
+        </button>
 
-      <h2 className="font-display mt-4 text-2xl font-bold text-white">จองคิวสำเร็จ ✓</h2>
-
-      <dl className="mx-auto mt-4 max-w-xs space-y-2 text-left">
-        {[
-          ["ชื่อ", result.name],
-          ["วันที่", longDateFormatter.format(new Date(`${date}T00:00:00`))],
-          ["เวลา", result.time],
-        ].map(([label, value]) => (
-          <div
-            key={label}
-            className="flex items-center justify-between gap-3 rounded-xl bg-ink-950/40 px-4 py-2.5"
-          >
-            <dt className="text-sm text-white/60">{label}</dt>
-            <dd className="font-display truncate text-sm font-bold text-white">{value}</dd>
+        <div className="w-full p-4 sm:p-6">
+        <div className="mb-5 text-center">
+          <div aria-hidden className="mx-auto grid size-14 place-items-center rounded-full border border-white/30 bg-white text-ink-950">
+            <svg viewBox="0 0 24 24" className="size-7" fill="none" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="m5 12.5 4.5 4.5L19 7.5" />
+            </svg>
           </div>
-        ))}
-      </dl>
+          <p className="mt-5 text-[0.65rem] font-bold tracking-[0.3em] text-white/45 uppercase">Flook Barber Shop</p>
+          <h2 id="booking-success-title" className="mt-2 font-serif text-4xl tracking-[-0.05em] text-white sm:text-5xl">จองคิวสำเร็จ ✓</h2>
+        </div>
 
-      <p className="font-display mt-5 text-lg font-bold text-gold-500">แล้วพบกันครับ</p>
+        <article ref={cardRef} className="w-full rounded-[1.75rem] border border-white/20 bg-ink-950 p-5 text-left shadow-2xl shadow-black/40 sm:p-7">
+          <div className="flex items-start justify-between gap-4 border-b border-white/15 pb-5">
+            <div>
+              <p className="text-[0.6rem] font-bold tracking-[0.25em] text-white/40 uppercase">Booking confirmation</p>
+              <p className="mt-2 font-serif text-2xl text-white">Flook Barber Shop</p>
+            </div>
+            <span className="rounded-full border border-white/25 px-3 py-1 text-[0.6rem] font-bold tracking-[0.15em] text-white uppercase">{result.status.toUpperCase()}</span>
+          </div>
 
-      <Button variant="ghost" fullWidth className="mt-5" onClick={onAgain}>
-        จองคิวเพิ่ม
-      </Button>
-    </motion.section>
+          <dl className="mt-5 space-y-3">
+            {[
+              ["Name", result.name],
+              ["Service", result.service],
+              ["Date", longDateFormatter.format(new Date(`${date}T00:00:00`))],
+              ["Time", result.time],
+              ["Phone", result.phone],
+              ["Status", result.status.toUpperCase()],
+            ].map(([label, value]) => (
+              <div key={label} className="flex items-baseline justify-between gap-4 border-b border-white/8 pb-2">
+                <dt className="text-[0.65rem] font-bold tracking-[0.15em] text-white/40 uppercase">{label}</dt>
+                <dd className="max-w-[65%] text-right text-sm font-bold text-white">{value}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-6 text-center text-[0.65rem] font-bold tracking-[0.22em] text-white/40 uppercase">See you in the chair.</p>
+        </article>
+
+        <div className="mt-5 space-y-3">
+          <Button fullWidth size="lg" loading={captureState === "working"} onClick={() => void captureBooking()}>
+            {captureState === "working" ? "กำลังสร้างภาพ..." : "บันทึกคิว / ส่งให้ช่าง"}
+          </Button>
+          {captureMessage ? <p role="status" className="text-center text-xs text-white/55">{captureMessage}</p> : null}
+          {preview ? (
+            <div className="rounded-2xl border border-white/10 bg-ink-900 p-2">
+              <p className="px-2 pb-2 text-[0.6rem] font-bold tracking-[0.16em] text-white/35 uppercase">Preview · กดค้างที่รูปเพื่อบันทึก</p>
+              <Image src={preview} alt="Booking confirmation preview" width={900} height={1200} unoptimized className="w-full rounded-xl" />
+            </div>
+          ) : null}
+        </div>
+
+        <section aria-labelledby="success-rules" className="mt-8 rounded-[1.5rem] border border-white/12 bg-ink-900 p-5 text-left">
+          <h3 id="success-rules" className="font-serif text-2xl text-white">กฎการจอง</h3>
+          <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-6 text-white/60">
+            <li>กรุณามาตรงเวลาตามเวลาที่จอง</li>
+            <li>สามารถมาสายได้ไม่เกิน 15 นาที</li>
+            <li>หากเกิน 15 นาที ทางร้านขอสงวนสิทธิ์ในการเลื่อนคิวไปยังคิวถัดไป</li>
+            <li>หากมีธุระด่วนและไม่สามารถมาตามนัดได้ กรุณาแจ้งหรือขอเลื่อนคิวล่วงหน้า 2–3 ชั่วโมง</li>
+            <li>ไม่มีการเก็บค่ามัดจำ</li>
+            <li>กรุณาตรวจสอบวันและเวลาก่อนยืนยันการจอง</li>
+          </ol>
+        </section>
+
+        <Button variant="ghost" fullWidth className="mt-5" onClick={onAgain}>
+          จองคิวเพิ่ม
+        </Button>
+        </div>
+      </motion.section>
+    </motion.div>
   );
 }
 
@@ -593,7 +940,12 @@ function DayForm({
   loadError,
   name,
   nameError,
+  phone,
+  phoneError,
+  service,
   onNameChange,
+  onPhoneChange,
+  onPhoneError,
   onBooked,
   onSlotLost,
 }: {
@@ -604,8 +956,19 @@ function DayForm({
   loadError: string | null;
   name: string;
   nameError: string | null;
+  phone: string;
+  phoneError: string | null;
+  service: Service | null;
   onNameChange: (value: string) => void;
-  onBooked: (result: { name: string; time: string }) => void;
+  onPhoneChange: (value: string) => void;
+  onPhoneError: (message: string | null) => void;
+  onBooked: (result: {
+    name: string;
+    phone: string;
+    service: string;
+    status: BookingStatus;
+    time: string;
+  }) => void;
   onSlotLost: () => void;
 }) {
   const [selection, setSelection] = useState<SlotWithAvailability | null>(null);
@@ -649,11 +1012,30 @@ function DayForm({
 
     setSubmitError(null);
 
+    if (!service) {
+      inFlight.current = false;
+      setSubmitError("กรุณาเลือกบริการก่อน");
+      return;
+    }
+
     const trimmed = name.trim();
     if (!trimmed) {
       inFlight.current = false;
       onNameChange(trimmed);
       setSubmitError("กรุณากรอกชื่อของคุณ");
+      return;
+    }
+    const normalizedPhone = normalizeThaiPhone(phone);
+    if (!normalizedPhone) {
+      inFlight.current = false;
+      onPhoneError("กรุณากรอกเบอร์โทรศัพท์");
+      setSubmitError("กรุณากรอกเบอร์โทรศัพท์");
+      return;
+    }
+    if (!isValidThaiPhone(normalizedPhone)) {
+      inFlight.current = false;
+      onPhoneError("กรุณากรอกเบอร์มือถือไทย 10 หลัก เช่น 080-521-1831");
+      setSubmitError("กรุณากรอกเบอร์มือถือไทย 10 หลัก เช่น 080-521-1831");
       return;
     }
     if (!selectedSlot) {
@@ -664,6 +1046,13 @@ function DayForm({
 
     // The grid may have been left open long enough for this slot to start.
     // Reject it locally before the RPC, while the database remains the final gate.
+    if (isLunchBreakSlot(selectedSlot.start_time, selectedSlot.end_time)) {
+      inFlight.current = false;
+      setSubmitError("ช่วง 12:00–13:00 เป็นเวลาพักของร้าน กรุณาเลือกเวลาอื่น");
+      setSelection(null);
+      onSlotLost();
+      return;
+    }
     if (slotHasStarted(date, selectedSlot.start_time)) {
       inFlight.current = false;
       setSubmitError("เวลานี้ผ่านไปแล้ว กรุณาเลือกเวลาใหม่");
@@ -675,6 +1064,7 @@ function DayForm({
     setSubmitting(true);
     const res = await createBooking({
       customerName: trimmed,
+      customerPhone: normalizedPhone,
       timeSlotId: selectedSlot.id,
     });
     setSubmitting(false);
@@ -683,7 +1073,10 @@ function DayForm({
     if (res.ok) {
       onBooked({
         name: trimmed,
-        time: formatClockTime(selectedSlot.start_time) ?? selectedSlot.start_time,
+        phone: normalizedPhone,
+        service: service.name,
+        status: res.status,
+        time: formatTime12Hour(selectedSlot.start_time) ?? selectedSlot.start_time,
       });
       return;
     }
@@ -700,6 +1093,18 @@ function DayForm({
 
     if (res.reason === "invalid_name") {
       setSubmitError("กรุณากรอกชื่อของคุณ");
+      return;
+    }
+
+    if (res.reason === "phone_required") {
+      onPhoneError("กรุณากรอกเบอร์โทรศัพท์");
+      setSubmitError("กรุณากรอกเบอร์โทรศัพท์");
+      return;
+    }
+
+    if (res.reason === "invalid_phone") {
+      onPhoneError("กรุณากรอกเบอร์มือถือไทย 10 หลัก เช่น 080-521-1831");
+      setSubmitError("กรุณากรอกเบอร์มือถือไทย 10 หลัก เช่น 080-521-1831");
       return;
     }
 
@@ -740,6 +1145,12 @@ function DayForm({
             loading={loading}
             error={loadError}
             onSelect={(slot) => {
+              if (isLunchBreakSlot(slot.start_time, slot.end_time)) {
+                setSubmitError("ช่วง 12:00–13:00 เป็นเวลาพักของร้าน กรุณาเลือกเวลาอื่น");
+                setSelection(null);
+                onSlotLost();
+                return;
+              }
               if (slotHasStarted(date, slot.start_time)) {
                 setSubmitError("เวลานี้ผ่านไปแล้ว กรุณาเลือกเวลาใหม่");
                 setSelection(null);
@@ -762,7 +1173,7 @@ function DayForm({
           <div className="rounded-2xl bg-green-800 px-4 py-3">
             <p className="font-display text-sm font-bold text-white">วันที่ {longDate}</p>
             <p className="font-display mt-0.5 text-sm font-bold text-gold-400">
-              เวลา {formatClockTime(selectedSlot.start_time) ?? selectedSlot.start_time}
+              เวลา {formatTime12Hour(selectedSlot.start_time) ?? selectedSlot.start_time}
             </p>
           </div>
         ) : null}
@@ -786,6 +1197,31 @@ function DayForm({
           {nameError ? (
             <p id="customer-name-error" className="mt-1.5 text-sm font-medium text-danger">
               {nameError}
+            </p>
+          ) : null}
+        </div>
+
+        <div>
+          <label htmlFor="customer-phone" className="font-display block text-sm font-bold text-white">
+            เบอร์โทรศัพท์
+          </label>
+          <input
+            id="customer-phone"
+            name="customer_phone"
+            type="tel"
+            value={phone}
+            onChange={(e) => onPhoneChange(e.target.value)}
+            placeholder="เช่น 080-521-1831"
+            autoComplete="tel"
+            inputMode="tel"
+            maxLength={15}
+            aria-invalid={phoneError ? true : undefined}
+            aria-describedby={phoneError ? "customer-phone-error" : undefined}
+            className="mt-1.5 min-h-12 w-full max-w-full rounded-2xl bg-ink-800 px-4 text-base text-white ring-1 ring-white/12 placeholder:text-white/30 focus:ring-2 focus:ring-gold-500 focus:outline-none"
+          />
+          {phoneError ? (
+            <p id="customer-phone-error" className="mt-1.5 text-sm font-medium text-danger">
+              {phoneError}
             </p>
           ) : null}
         </div>
