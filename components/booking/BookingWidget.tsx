@@ -35,6 +35,7 @@ const WEEKDAY_LABELS = ["จ", "อ", "พ", "พฤ", "ศ", "ส", "อ"] as c
 const SERVICES = [
   {
     name: "Men's Haircut",
+    thaiName: "ตัดผมชาย",
     detail: "Classic cut",
     description: "ทรงคลาสสิกที่เก็บรายละเอียดรอบกรอบหน้าและท้ายทอยอย่างพอดี",
     price: "฿100",
@@ -43,7 +44,8 @@ const SERVICES = [
   },
   {
     name: "Volume Perm",
-    detail: "Soft volume and shape",
+    thaiName: "ดัดวอลลุ่ม",
+    detail: "Natural volume & texture",
     description: "เพิ่มวอลลุ่มและรูปทรงให้เส้นผมดูมีมิติ พร้อม styling ที่ดูเป็นธรรมชาติ",
     price: "฿700–1,000",
     eyebrow: "02 / VOLUME",
@@ -51,7 +53,8 @@ const SERVICES = [
   },
   {
     name: "Curly Perm",
-    detail: "Defined natural curl",
+    thaiName: "ดัดหยิก",
+    detail: "Defined curls with character",
     description: "ลอนหยิกที่ชัดขึ้นแต่ยังคง movement ของเส้นผมและ texture ที่ดูสะอาด",
     price: "฿700–1,000",
     eyebrow: "03 / CURL",
@@ -59,7 +62,8 @@ const SERVICES = [
   },
   {
     name: "Messy Perm",
-    detail: "Texture with attitude",
+    thaiName: "ดัดเซอร์",
+    detail: "Effortless texture & movement",
     description: "เพิ่ม texture แบบเซอร์ ๆ ให้ทรงผมมี movement และจัดทรงได้ง่ายในทุกวัน",
     price: "฿700–1,000",
     eyebrow: "04 / MESSY",
@@ -67,7 +71,8 @@ const SERVICES = [
   },
   {
     name: "Down Perm",
-    detail: "Clean, controlled sides",
+    thaiName: "ดาวน์เพิร์ม",
+    detail: "Clean & controlled sides",
     description: "กดเส้นผมด้านข้างให้เข้าทรง เนี้ยบขึ้น และดูสมดุลกับรูปหน้า",
     price: "฿200–500",
     eyebrow: "05 / DOWN",
@@ -75,7 +80,8 @@ const SERVICES = [
   },
   {
     name: "Up Perm",
-    detail: "Lifted styling and form",
+    thaiName: "อัพเพิร์ม",
+    detail: "Lifted volume & definition",
     description: "ยกโคนและเพิ่ม form ให้ผมด้านบนดูมีทิศทางและมี volume มากขึ้น",
     price: "฿200–500",
     eyebrow: "06 / UP",
@@ -117,27 +123,19 @@ function ServicePicker({
   onSelect,
 }: {
   selected: Service | null;
-  onSelect: (service: Service) => void;
+  onSelect: (service: Service | null) => void;
 }) {
-  const rail = useRef<HTMLDivElement>(null);
-
-  function scrollServices(direction: -1 | 1) {
-    rail.current?.scrollBy({
-      left: direction * (rail.current.clientWidth * 0.72),
-      behavior: "smooth",
-    });
-  }
-
   return (
-    <section id="services" aria-labelledby="pick-service" className="scroll-mt-6 rounded-[1.75rem] border border-white/15 bg-ink-900 p-4 sm:p-6">
-      <div className="flex items-end justify-between gap-3 border-b border-white/10 pb-4">
+    <section id="services" aria-labelledby="pick-service" className="relative scroll-mt-6 overflow-hidden rounded-[1.75rem] border border-white/35 bg-ink-900 p-4 shadow-[0_18px_50px_-30px_#000] ring-1 ring-white/10 sm:p-6">
+      <div aria-hidden className="absolute inset-x-0 top-0 h-1 bg-white" />
+      <div className="flex items-end justify-between gap-3 border-b border-white/20 pb-4">
         <div>
-          <p className="text-[0.6rem] font-bold tracking-[0.25em] text-white/35 uppercase">01 / Service</p>
-          <h2 id="pick-service" className="mt-1 font-serif text-3xl tracking-[-0.04em] text-white">Choose your look.</h2>
+          <p className="text-[0.6rem] font-bold tracking-[0.25em] text-white/35 uppercase">OUR SERVICES</p>
+          <h2 id="pick-service" className="mt-1 font-serif text-3xl tracking-[-0.04em] text-white">FIND YOUR STYLE. <span className="font-display text-base tracking-normal text-white/55">(เลือกบริการ)</span></h2>
         </div>
-        {selected ? <span className="text-[0.65rem] font-bold tracking-[0.15em] text-white/45 uppercase">Selected</span> : null}
+        {selected ? <span className="rounded-full bg-white px-3 py-1 text-[0.6rem] font-bold tracking-[0.15em] text-ink-950 uppercase">Selected</span> : <span className="rounded-full border border-white/30 px-3 py-1 text-[0.6rem] font-bold tracking-[0.15em] text-white/70 uppercase">Required</span>}
       </div>
-      <div ref={rail} className="no-scrollbar mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth overscroll-x-contain px-1 py-1 touch-pan-x">
+      <div className="mt-4 grid gap-2 px-1 py-1">
         {SERVICES.map((service) => {
           const active = selected?.name === service.name;
           return (
@@ -145,7 +143,7 @@ function ServicePicker({
               key={service.name}
               layout
               className={cn(
-                "w-[78vw] shrink-0 snap-center overflow-hidden rounded-2xl border text-left transition-colors duration-300 sm:w-[42vw] lg:w-[29vw]",
+                "w-full overflow-hidden rounded-2xl border text-left transition-colors duration-300",
                 active
                   ? "border-white bg-white text-ink-950"
                   : "border-white/12 bg-ink-800 text-white hover:border-white/45",
@@ -155,7 +153,7 @@ function ServicePicker({
                 type="button"
                 aria-pressed={active}
                 aria-expanded={active}
-                onClick={() => onSelect(service)}
+                onClick={() => onSelect(active ? null : service)}
                 className="flex min-h-[4.5rem] w-full items-center justify-between gap-3 px-4 py-3 text-left"
               >
                 <span className="min-w-0">
@@ -163,7 +161,8 @@ function ServicePicker({
                     {service.eyebrow}
                   </span>
                   <span className="mt-1 block truncate font-display text-sm font-bold tracking-tight">{service.name}</span>
-                  <span className={cn("mt-1 block truncate text-xs", active ? "text-ink-950/55" : "text-white/40")}>{service.detail}</span>
+                  <span className={cn("mt-1 block truncate text-xs font-bold", active ? "text-ink-950/70" : "text-white/65")}>{service.thaiName}</span>
+                  <span className={cn("mt-0.5 block truncate text-xs", active ? "text-ink-950/45" : "text-white/40")}>{service.detail}</span>
                 </span>
                 <span className="flex shrink-0 items-center gap-3">
                   <span className={cn("text-xs font-bold", active ? "text-ink-950" : "text-white/70")}>{service.price}</span>
@@ -188,7 +187,7 @@ function ServicePicker({
                               alt={`${service.name} hairstyle reference`}
                               fill
                               sizes="(max-width: 640px) 78vw, (max-width: 1024px) 42vw, 29vw"
-                              className="object-contain grayscale"
+                              className="object-contain"
                             />
                             <span className="absolute bottom-3 left-3 rounded-full bg-black/65 px-2.5 py-1 text-[0.55rem] font-bold tracking-[0.16em] text-white uppercase">{service.name}</span>
                           </div>
@@ -203,10 +202,6 @@ function ServicePicker({
             </motion.div>
           );
         })}
-      </div>
-      <div className="mt-4 hidden justify-end gap-2 sm:flex">
-        <button type="button" onClick={() => scrollServices(-1)} aria-label="Previous service" className="grid size-9 place-items-center rounded-full border border-white/20 text-white transition-colors hover:bg-white hover:text-ink-950">←</button>
-        <button type="button" onClick={() => scrollServices(1)} aria-label="Next service" className="grid size-9 place-items-center rounded-full border border-white/20 text-white transition-colors hover:bg-white hover:text-ink-950">→</button>
       </div>
     </section>
   );
@@ -256,7 +251,7 @@ function DateCalendar({
   availableDates,
   onSelect,
 }: {
-  selected: ISODate;
+  selected: ISODate | "";
   availableDates: Set<ISODate>;
   onSelect: (iso: ISODate) => void;
 }) {
@@ -293,6 +288,7 @@ function DateCalendar({
 
   return (
     <section aria-labelledby="pick-date" className="rounded-3xl bg-ink-900 p-4 ring-1 ring-white/10">
+      <p className="mb-3 text-[0.6rem] font-bold tracking-[0.25em] text-white/45 uppercase">SELECT DATE <span className="font-display tracking-normal">/ เลือกวันที่</span></p>
       <div className="flex items-center justify-between gap-2">
         <button
           type="button"
@@ -445,7 +441,8 @@ function SlotGrid({
   return (
     <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="เลือกเวลา">
       {slots.map((slot) => {
-        const time = formatTime12Hour(slot.start_time) ?? slot.start_time;
+        const formattedTime = formatTime12Hour(slot.start_time) ?? slot.start_time;
+        const [clock, period] = formattedTime.split(" ");
         const disabled = slot.isBooked;
         const active = slot.id === selectedId;
 
@@ -468,7 +465,8 @@ function SlotGrid({
                   : "bg-green-800 text-white hover:bg-green-700",
             )}
           >
-            {time}
+            <span className="block text-base leading-none tabular-nums">{clock}</span>
+            {period ? <span className="mt-1 block text-[0.6rem] font-bold tracking-[0.16em] opacity-60">{period}</span> : null}
             {disabled ? <span className="sr-only"> จองแล้ว</span> : null}
           </motion.button>
         );
@@ -501,7 +499,7 @@ export function BookingWidget({
   initialTotalAvailable: number;
   initialError?: string | null;
 }) {
-  const [date, setDate] = useState<ISODate>(initialDate);
+  const [date, setDate] = useState<ISODate | null>(initialDate);
   const [day, setDay] = useState<{
      date: ISODate;
      slots: SlotWithAvailability[];
@@ -592,7 +590,11 @@ export function BookingWidget({
    */
   const handleDateChange = useCallback(
     (next: ISODate) => {
-      if (next === date) return;
+      if (next === date) {
+        setDate(null);
+        setDay((previous) => ({ ...previous, slots: [], bookedIds: [], loading: false, error: null }));
+        return;
+      }
       setDate(next);
       setDay({
         date: next,
@@ -607,11 +609,11 @@ export function BookingWidget({
     [date, load],
   );
 
-  const slots = day.date === date ? day.slots : NO_SLOTS;
-  const bookedIds = day.date === date ? day.bookedIds : NO_BOOKED_IDS;
-  const loading = day.date === date ? day.loading : true;
-  const loadError = day.date === date ? day.error : null;
-  const totalAvailable = day.date === date ? day.totalAvailable : 0;
+  const slots = date && day.date === date ? day.slots : NO_SLOTS;
+  const bookedIds = date && day.date === date ? day.bookedIds : NO_BOOKED_IDS;
+  const loading = date ? (day.date === date ? day.loading : true) : false;
+  const loadError = date && day.date === date ? day.error : null;
+  const totalAvailable = date && day.date === date ? day.totalAvailable : 0;
 
   /**
    * Every slot id belonging to the day on screen -- the free ones we can offer,
@@ -645,6 +647,7 @@ export function BookingWidget({
    */
   const handleChange = useCallback(
     (change: TableChange) => {
+      if (!date) return;
       if (!slotChangeTouchesDate(change, date, daySlotIds())) return;
       void load(date);
     },
@@ -654,6 +657,7 @@ export function BookingWidget({
   useTableChanges(GUEST_WATCHED_TABLES, handleChange);
 
   useBookingSignal((timeSlotId) => {
+    if (!date) return;
     if (!bookingTouchesSlot(timeSlotId, daySlotIds())) return;
     void load(date);
   });
@@ -662,7 +666,7 @@ export function BookingWidget({
     return (
       <BookingSuccess
         result={result}
-        date={date}
+        date={date ?? initialDate}
         onClose={() => setResult(null)}
         onAgain={() => {
           setResult(null);
@@ -671,7 +675,7 @@ export function BookingWidget({
           setNameError(null);
           setPhoneError(null);
           setSelectedService(null);
-          void load(date);
+          if (date) void load(date);
         }}
       />
     );
@@ -680,19 +684,18 @@ export function BookingWidget({
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-4 gap-1 border-y border-white/10 py-3 text-[0.55rem] font-bold tracking-[0.15em] text-white/35 uppercase sm:text-[0.65rem]">
-        <span className="text-white">01 Service</span>
-        <span>02 Date</span>
-        <span>03 Time</span>
+        <span className="text-white">01 Date</span>
+        <span>02 Time</span>
+        <span>03 Service</span>
         <span className="text-right">04 Details</span>
       </div>
-      <ServicePicker selected={selectedService} onSelect={setSelectedService} />
       <DateCalendar
-        selected={date}
+        selected={date ?? ""}
         availableDates={availableDates}
         onSelect={handleDateChange}
       />
 
-      <DayForm
+      {date ? <DayForm
         key={date}
         date={date}
         slots={slots}
@@ -704,6 +707,7 @@ export function BookingWidget({
         phone={phone}
         phoneError={phoneError}
         service={selectedService}
+        onServiceSelect={setSelectedService}
         onNameChange={(value) => {
           setName(value);
           if (nameError) setNameError(null);
@@ -715,7 +719,11 @@ export function BookingWidget({
         onPhoneError={setPhoneError}
         onBooked={setResult}
         onSlotLost={() => void load(date)}
-      />
+      /> : (
+        <div className="rounded-3xl border border-white/20 bg-ink-900 px-4 py-8 text-center text-sm text-white/55">
+          กรุณาเลือกวันที่เพื่อดูเวลาที่ว่าง
+        </div>
+      )}
     </div>
   );
 }
@@ -907,13 +915,12 @@ function BookingSuccess({
         </div>
 
         <section aria-labelledby="success-rules" className="mt-8 rounded-[1.5rem] border border-white/12 bg-ink-900 p-5 text-left">
-          <h3 id="success-rules" className="font-serif text-2xl text-white">กฎการจอง</h3>
+          <h3 id="success-rules" className="font-serif text-2xl text-white">BEFORE YOUR APPOINTMENT</h3>
           <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-6 text-white/60">
-            <li>กรุณามาตรงเวลาตามเวลาที่จอง</li>
-            <li>สามารถมาสายได้ไม่เกิน 15 นาที</li>
-            <li>หากเกิน 15 นาที ทางร้านขอสงวนสิทธิ์ในการเลื่อนคิวไปยังคิวถัดไป</li>
-            <li>หากมีธุระด่วนและไม่สามารถมาตามนัดได้ กรุณาแจ้งหรือขอเลื่อนคิวล่วงหน้า 2–3 ชั่วโมง</li>
-            <li>ไม่มีการเก็บค่ามัดจำ</li>
+            <li>กรุณามาตรงตามเวลาที่จอง</li>
+            <li>สามารถมาสายได้ไม่เกิน 15 นาที หลังจากนั้นทางร้านขอสงวนสิทธิ์ในการเลื่อนคิว</li>
+            <li>หากไม่สามารถมาตามนัดได้ กรุณาแจ้งหรือขอเลื่อนคิวล่วงหน้า 2–3 ชั่วโมง</li>
+            <li>ไม่มีค่ามัดจำ</li>
             <li>กรุณาตรวจสอบวันและเวลาก่อนยืนยันการจอง</li>
           </ol>
         </section>
@@ -944,6 +951,7 @@ function DayForm({
   phone,
   phoneError,
   service,
+  onServiceSelect,
   onNameChange,
   onPhoneChange,
   onPhoneError,
@@ -960,6 +968,7 @@ function DayForm({
   phone: string;
   phoneError: string | null;
   service: Service | null;
+  onServiceSelect: (service: Service | null) => void;
   onNameChange: (value: string) => void;
   onPhoneChange: (value: string) => void;
   onPhoneError: (message: string | null) => void;
@@ -1131,7 +1140,7 @@ function DayForm({
       <section aria-labelledby="pick-time" className="rounded-3xl bg-ink-900 p-4 ring-1 ring-white/10">
         <div className="flex items-baseline justify-between gap-3">
           <h2 id="pick-time" className="font-display text-base font-bold text-white">
-            เวลาที่ว่าง
+            SELECT TIME <span className="text-sm font-normal text-white/55">/ เลือกเวลาที่สะดวก</span>
           </h2>
           <p className="font-display shrink-0 text-xs font-bold text-gold-500">
             {loading ? "…" : `ว่าง ${openCount} คิว`}
@@ -1149,6 +1158,11 @@ function DayForm({
             loading={loading}
             error={loadError}
             onSelect={(slot) => {
+              if (selectedSlot && Number(selectedSlot.id) === Number(slot.id)) {
+                setSelection(null);
+                setSubmitError(null);
+                return;
+              }
               if (isLunchBreakSlot(slot.start_time, slot.end_time)) {
                 setSubmitError("ช่วง 12:00–13:00 เป็นเวลาพักของร้าน กรุณาเลือกเวลาอื่น");
                 setSelection(null);
@@ -1168,11 +1182,21 @@ function DayForm({
         </div>
       </section>
 
+      <ServicePicker selected={service} onSelect={onServiceSelect} />
+
       <form
         onSubmit={handleSubmit}
         noValidate
-        className="space-y-4 rounded-3xl bg-ink-900 p-4 ring-1 ring-white/10"
+        className="relative space-y-4 overflow-hidden rounded-3xl border border-white/30 bg-ink-900 p-4 shadow-[0_18px_50px_-30px_#000] ring-1 ring-white/10 sm:p-6"
       >
+        <div aria-hidden className="absolute inset-x-0 top-0 h-1 bg-white" />
+        <div className="flex items-end justify-between gap-3 border-b border-white/20 pb-4">
+          <div>
+            <p className="text-[0.6rem] font-bold tracking-[0.25em] text-white/45 uppercase">04 / Customer details</p>
+          <h2 className="mt-1 font-serif text-2xl tracking-[-0.03em] text-white">YOUR DETAILS <span className="font-display text-base tracking-normal text-white/55">/ ข้อมูลสำหรับจองคิว</span></h2>
+          </div>
+          <span className="rounded-full border border-white/30 px-2.5 py-1 text-[0.6rem] font-bold tracking-[0.12em] text-white/70 uppercase">Required</span>
+        </div>
         {selectedSlot ? (
           <div className="rounded-2xl bg-green-800 px-4 py-3">
             <p className="font-display text-sm font-bold text-white">วันที่ {longDate}</p>
@@ -1183,8 +1207,8 @@ function DayForm({
         ) : null}
 
         <div>
-          <label htmlFor="customer-name" className="font-display block text-sm font-bold text-white">
-            ชื่อของคุณ
+          <label htmlFor="customer-name" className="flex items-center justify-between gap-2 font-display text-sm font-bold text-white">
+            <span>YOUR NAME <span className="font-display text-sm font-normal text-white/60">/ ชื่อของคุณ</span></span><span className="text-[0.6rem] font-bold tracking-[0.12em] text-white/40 uppercase">Required</span>
           </label>
           <input
             id="customer-name"
@@ -1196,7 +1220,7 @@ function DayForm({
             maxLength={120}
             aria-invalid={nameError ? true : undefined}
             aria-describedby={nameError ? "customer-name-error" : undefined}
-            className="mt-1.5 min-h-12 w-full max-w-full rounded-2xl bg-ink-800 px-4 text-base text-white ring-1 ring-white/12 placeholder:text-white/30 focus:ring-2 focus:ring-gold-500 focus:outline-none"
+            className="mt-1.5 min-h-12 w-full max-w-full rounded-2xl bg-ink-800 px-4 text-base text-white ring-1 ring-white/25 placeholder:text-white/30 focus:ring-2 focus:ring-white focus:outline-none"
           />
           {nameError ? (
             <p id="customer-name-error" className="mt-1.5 text-sm font-medium text-danger">
@@ -1206,8 +1230,8 @@ function DayForm({
         </div>
 
         <div>
-          <label htmlFor="customer-phone" className="font-display block text-sm font-bold text-white">
-            เบอร์โทรศัพท์
+          <label htmlFor="customer-phone" className="flex items-center justify-between gap-2 font-display text-sm font-bold text-white">
+            <span>PHONE NUMBER <span className="font-display text-sm font-normal text-white/60">/ เบอร์โทรศัพท์</span></span><span className="text-[0.6rem] font-bold tracking-[0.12em] text-white/40 uppercase">Required</span>
           </label>
           <input
             id="customer-phone"
@@ -1221,7 +1245,7 @@ function DayForm({
             maxLength={15}
             aria-invalid={phoneError ? true : undefined}
             aria-describedby={phoneError ? "customer-phone-error" : undefined}
-            className="mt-1.5 min-h-12 w-full max-w-full rounded-2xl bg-ink-800 px-4 text-base text-white ring-1 ring-white/12 placeholder:text-white/30 focus:ring-2 focus:ring-gold-500 focus:outline-none"
+            className="mt-1.5 min-h-12 w-full max-w-full rounded-2xl bg-ink-800 px-4 text-base text-white ring-1 ring-white/25 placeholder:text-white/30 focus:ring-2 focus:ring-white focus:outline-none"
           />
           {phoneError ? (
             <p id="customer-phone-error" className="mt-1.5 text-sm font-medium text-danger">
@@ -1243,7 +1267,7 @@ function DayForm({
           loading={submitting}
           disabled={!selectedSlot || loading}
         >
-          จองคิว
+          BOOK NOW
         </Button>
       </form>
     </>

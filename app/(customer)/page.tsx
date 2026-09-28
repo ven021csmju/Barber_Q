@@ -37,13 +37,14 @@ export default async function HomePage() {
 
       <header id="top" className="-mt-10 space-y-8 sm:-mt-12">
         <div className="max-w-3xl">
-          <p className="text-[0.65rem] font-bold tracking-[0.32em] text-white/45 uppercase">Flook Barber Shop · Est. 2020</p>
+          <p className="text-[0.65rem] font-bold tracking-[0.32em] text-white/45 uppercase">FLOOK BARBER</p>
           <h1 id="hero-title" className="mt-5 max-w-xl font-serif text-[4.5rem] leading-[0.78] tracking-[-0.08em] text-white sm:text-[7rem] lg:text-[8.5rem]">
-            Flook
-            <span className="block pl-8 text-white/45">Barber</span>
+            FLOOK
+            <span className="block pl-8 text-white/45">BARBER</span>
           </h1>
+          <p className="mt-7 font-display text-sm font-bold tracking-[0.2em] text-white uppercase">YOUR STYLE. YOUR SIGNATURE.</p>
           <p className="mt-8 max-w-sm text-sm leading-7 text-white/55">
-            Precision cuts, quiet confidence, and a chair reserved for your next look.
+            ตัดผมที่สะท้อนตัวคุณ<br />เรียบ เท่ และเป็นสไตล์ของคุณเอง
           </p>
         </div>
 
@@ -55,7 +56,7 @@ export default async function HomePage() {
               { src: "/barber/S__4653079.jpg", alt: "Flook barber shaping a textured cut" },
               { src: "/barber/S__4653084.jpg", alt: "Finished classic men's haircut" },
             ]}
-            cardClassName="w-full sm:w-[62vw] lg:w-[46vw]"
+            cardClassName="w-[70vw] sm:w-[44vw] lg:w-[32vw]"
             aspectClassName="aspect-[4/5]"
             frameless
           />
@@ -66,17 +67,17 @@ export default async function HomePage() {
           href="#booking"
           className="inline-flex min-h-12 items-center rounded-full bg-white px-6 text-xs font-bold tracking-[0.18em] text-ink-950 uppercase transition-transform hover:-translate-y-1"
         >
-          Book appointment <span className="ml-5 text-base">↗</span>
+            BOOK APPOINTMENT <span className="ml-5 text-base">↗</span>
         </a>
       </header>
 
       <section id="booking" className="scroll-mt-6">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-white/15 pb-5">
           <div>
-            <p className="text-[0.65rem] font-bold tracking-[0.28em] text-white/40 uppercase">02 / Reserve a chair</p>
-            <h2 className="mt-2 font-serif text-4xl tracking-[-0.04em] text-white sm:text-5xl">Make it yours.</h2>
+            <p className="text-[0.65rem] font-bold tracking-[0.28em] text-white/40 uppercase">BOOK YOUR APPOINTMENT</p>
+            <h2 className="mt-2 font-serif text-4xl tracking-[-0.04em] text-white sm:text-5xl">YOUR TIME. YOUR CHAIR.</h2>
           </div>
-          <p className="max-w-xs text-right text-xs leading-5 text-white/45">Live availability from the shop. Choose a service, date and time.</p>
+          <p className="max-w-xs text-right text-xs leading-5 text-white/45">เลือกวันที่และเวลาที่ต้องการ<br />แล้วพบกันที่ FLOOK BARBER</p>
         </div>
         <BookingWidget
           initialDate={today}
@@ -98,9 +99,9 @@ export default async function HomePage() {
           aspectClassName="aspect-[4/5]"
         />
         <div>
-          <p className="text-[0.65rem] font-bold tracking-[0.28em] text-white/40 uppercase">03 / The barber</p>
-          <h2 id="barber-title" className="mt-4 font-serif text-5xl leading-[0.9] tracking-[-0.05em] text-white sm:text-7xl">One barber.<br /><span className="text-white/40">One standard.</span></h2>
-          <p className="mt-7 max-w-lg text-sm leading-7 text-white/55">A single-chair studio built around detail. Every cut is shaped with intention, from the first section to the final finish.</p>
+          <p className="text-[0.65rem] font-bold tracking-[0.28em] text-white/40 uppercase">THE BARBER SHOP</p>
+          <h2 id="barber-title" className="mt-4 font-display text-4xl font-bold leading-[0.95] tracking-[0.04em] text-white sm:text-6xl">CUT. STYLE. CONFIDENCE.</h2>
+          <p className="mt-7 max-w-lg text-sm leading-7 text-white/55">เราเชื่อว่าทรงผมที่ดี ไม่ใช่แค่การตัดให้สั้น<br />แต่คือการออกแบบสไตล์ที่เข้ากับคุณ<br /><br />ใส่ใจในรายละเอียดทุกขั้นตอน<br />ตั้งแต่ทรงผมจนถึงการจัดแต่ง</p>
           <div className="mt-8 grid max-w-md grid-cols-2 border-y border-white/15 py-4 text-[0.65rem] font-bold tracking-[0.18em] text-white/45 uppercase">
             <span>Open daily</span><span className="text-right text-white">09:00 — 21:00</span>
           </div>
@@ -123,9 +124,9 @@ export default async function HomePage() {
       </section>
 
       <footer className="grid gap-8 border-t border-white/15 pt-8 sm:grid-cols-2 lg:grid-cols-3">
-        <div><p className="text-[0.65rem] font-bold tracking-[0.25em] text-white/40 uppercase">Flook Barber Shop</p><p className="mt-3 font-serif text-3xl text-white">See you in the chair.</p></div>
+        <div><p className="text-[0.65rem] font-bold tracking-[0.25em] text-white/40 uppercase">FLOOK BARBER</p><p className="mt-3 font-serif text-3xl text-white">MAKE YOUR STYLE COUNT.</p></div>
         <div className="text-sm leading-7 text-white/55"><p>09:00 — 21:00</p><p>Lunch break · 12:00 — 13:00</p><a href="tel:0805211831" className="text-white underline underline-offset-4">080 521 1831</a></div>
-        <div className="flex gap-5 text-[0.65rem] font-bold tracking-[0.18em] text-white/60 uppercase sm:justify-end"><a href="https://www.instagram.com/flook_barber/" target="_blank" rel="noreferrer" className="hover:text-white">Instagram</a><a href="https://maps.app.goo.gl/5Gfn126DCQEFGiSb8?g_st=ic" target="_blank" rel="noreferrer" className="hover:text-white">Google Maps</a></div>
+        <div className="flex flex-wrap gap-5 text-[0.65rem] font-bold tracking-[0.18em] text-white/60 uppercase sm:justify-end"><a href="https://www.instagram.com/flook_barber/" target="_blank" rel="noreferrer" className="hover:text-white">Instagram</a><a href="https://maps.app.goo.gl/5Gfn126DCQEFGiSb8?g_st=ic" target="_blank" rel="noreferrer" className="hover:text-white">Google Maps</a><span className="w-full text-white/30 sm:text-right">© 2026 FLOOK BARBER</span></div>
       </footer>
     </div>
   );
