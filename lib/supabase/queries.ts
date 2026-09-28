@@ -289,6 +289,44 @@ export interface SlotOverviewRow {
   booking: Pick<Booking, "id" | "customer_name" | "status"> | null;
 }
 
+export interface BookingTimelineRow {
+  slot: TimeSlot;
+  bookings: BookingWithRefs[];
+  /** Only pending / confirmed bookings hold a slot. */
+  isBooked: boolean;
+}
+
+/** All booking history attached to each slot for the admin's daily timeline. */
+export const getBookingTimeline = cache(
+  async (date: ISODate): Promise<QueryResult<BookingTimelineRow[]>> => {
+    const [slotsResult, bookingsResult] = await Promise.all([
+      getSlotsByDate(date),
+      getBookings({ date }),
+    ]);
+
+    if (slotsResult.error) return fail("getBookingTimeline(slots)", slotsResult.error, []);
+    if (bookingsResult.error) return fail("getBookingTimeline(bookings)", bookingsResult.error, []);
+
+    const bySlot = new Map<number, BookingWithRefs[]>();
+    for (const booking of bookingsResult.data) {
+      const list = bySlot.get(booking.time_slot_id) ?? [];
+      list.push(booking);
+      bySlot.set(booking.time_slot_id, list);
+    }
+
+    return ok(
+      slotsResult.data.map((slot) => {
+        const bookings = bySlot.get(slot.id) ?? [];
+        return {
+          slot,
+          bookings,
+          isBooked: bookings.some((booking) => isActiveBooking(booking.status)),
+        };
+      }),
+    );
+  },
+);
+
 /**
  * A date's slots with their booking state attached.
  *

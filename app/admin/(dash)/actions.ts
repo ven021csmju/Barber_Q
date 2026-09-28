@@ -16,7 +16,13 @@ import type {
   ISODate,
   TimeSlotStatus,
 } from "@/lib/supabase/types";
-import { getBookings, getSlotOverview, type SlotOverviewRow } from "@/lib/supabase/queries";
+import {
+  getBookings,
+  getBookingTimeline,
+  getSlotOverview,
+  type BookingTimelineRow,
+  type SlotOverviewRow,
+} from "@/lib/supabase/queries";
 
 /**
  * Admin Server Actions.
@@ -70,6 +76,21 @@ export interface SlotListResult {
   ok: boolean;
   error: string | null;
   data: SlotOverviewRow[];
+}
+
+export interface BookingTimelineResult {
+  ok: boolean;
+  error: string | null;
+  data: BookingTimelineRow[];
+}
+
+export async function loadBookingTimelineForDate(date: ISODate): Promise<BookingTimelineResult> {
+  if (!(await requireAdmin())) {
+    return { ok: false, error: "กรุณาเข้าสู่ระบบอีกครั้ง", data: [] };
+  }
+
+  const result = await getBookingTimeline(date);
+  return { ok: result.ok, error: result.error, data: result.data };
 }
 
 /**
