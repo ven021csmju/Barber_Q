@@ -10,6 +10,11 @@ const GALLERY = [
   { src: "/barber/S__4653082.jpg", alt: "Flook barber shaping a haircut" },
   { src: "/barber/S__4653081.jpg", alt: "Textured haircut from the side" },
   { src: "/barber/S__4653079.jpg", alt: "Barber tools and haircut session" },
+  { src: "/barber/cut-w720-1.jpg", alt: "Warm blonde textured haircut" },
+  { src: "/barber/cut-w720-2.jpg", alt: "Classic layered men's haircut" },
+  { src: "/barber/cut-w720-3.jpg", alt: "Short textured haircut profile" },
+  { src: "/barber/cut-w720-4.jpg", alt: "Clean crop haircut detail" },
+  { src: "/barber/cut-w720-5.jpg", alt: "Curly textured haircut from the back" },
 ];
 
 export default async function HomePage() {
