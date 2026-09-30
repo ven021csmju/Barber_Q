@@ -36,6 +36,9 @@ export const metadata: Metadata = {
   description:
     "FLOOK BARBER — precision cuts, modern style, and online appointments.",
   applicationName: "FLOOK BARBER",
+  icons: {
+    icon: [{ url: "/barber/flook-logo.png?v=2", type: "image/png" }],
+  },
   appleWebApp: {
     capable: true,
     title: "FLOOK BARBER",

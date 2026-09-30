@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { BookingWidget } from "@/components/booking/BookingWidget";
 import { ImageRail } from "@/components/customer/ImageRail";
 import { getPublicAvailability } from "@/lib/supabase/public-slots";
@@ -24,7 +25,14 @@ export default async function HomePage() {
   return (
     <div className="space-y-20 pb-8 sm:space-y-28">
       <nav className="flex items-center justify-between border-b border-white/15 py-5" aria-label="Main navigation">
-        <a href="#top" className="font-display text-sm font-bold tracking-[0.24em] text-white">
+        <a href="#top" className="inline-flex items-center gap-2 font-display text-sm font-bold tracking-[0.24em] text-white">
+          <Image
+            src="/barber/flook-logo.png"
+            alt=""
+            width={28}
+            height={28}
+            className="size-7 rounded-lg object-cover"
+          />
           FLOOK <span className="text-white/35">/ BARBER</span>
         </a>
         <div className="hidden items-center gap-7 text-[0.65rem] font-bold tracking-[0.2em] text-white/50 uppercase sm:flex">
