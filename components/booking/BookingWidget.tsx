@@ -1168,6 +1168,8 @@ function DayForm({
 
   return (
     <>
+      <ServicePicker selected={service} onSelect={onServiceSelect} />
+
       <section aria-labelledby="pick-time" className="rounded-3xl bg-ink-900 p-4 ring-1 ring-white/10">
         <div className="flex items-baseline justify-between gap-3">
           <h2 id="pick-time" className="font-display text-base font-bold text-white">
@@ -1218,8 +1220,6 @@ function DayForm({
           )}
         </div>
       </section>
-
-      <ServicePicker selected={service} onSelect={onServiceSelect} />
 
       <form
         onSubmit={handleSubmit}
