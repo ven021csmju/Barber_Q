@@ -195,13 +195,14 @@ function ServicePicker({
                   >
                       <div className="border-t border-ink-950/15 p-3">
                         {service.image ? (
-                          <div className="relative h-44 overflow-visible rounded-xl bg-transparent sm:h-52">
+                          <div className="relative h-44 select-none overflow-visible rounded-xl bg-transparent touch-pan-y sm:h-52">
                             <Image
                               src={service.image}
                               alt={`${service.name} hairstyle reference`}
                               fill
                               sizes="(max-width: 640px) 78vw, (max-width: 1024px) 42vw, 29vw"
-                              className="object-contain"
+                              className="object-contain pointer-events-none"
+                              draggable={false}
                             />
                             <span className="absolute bottom-3 left-3 rounded-full bg-black/65 px-2.5 py-1 text-[0.55rem] font-bold tracking-[0.16em] text-white uppercase">{service.name}</span>
                           </div>
