@@ -172,8 +172,15 @@ export function BookingTimeline({
                                 <Badge tone={STATUS_TONE[booking.status]}>{STATUS_LABEL[booking.status]}</Badge>
                               </div>
                               <dl className="mt-3 grid grid-cols-2 gap-2 text-xs text-white/55">
-                                <div><dt className="text-white/30">บริการ</dt><dd>ไม่ระบุ</dd></div>
-                                <div><dt className="text-white/30">เวลา</dt><dd>{row.slot.start_time.slice(0, 5)} – {row.slot.end_time.slice(0, 5)}</dd></div>
+                                <div><dt className="text-white/30">บริการ</dt><dd>{booking.serviceName ?? "ไม่ระบุ"}</dd></div>
+                                <div>
+                                  <dt className="text-white/30">เวลา</dt>
+                                  <dd>
+                                    {booking.slotStart && booking.slotEnd
+                                      ? `${booking.slotStart.slice(0, 5)} – ${booking.slotEnd.slice(0, 5)}`
+                                      : `${row.slot.start_time.slice(0, 5)} – ${row.slot.end_time.slice(0, 5)}`}
+                                  </dd>
+                                </div>
                               </dl>
                               {booking.status === "pending" ? (
                                 <div className="mt-4 grid grid-cols-2 gap-2">

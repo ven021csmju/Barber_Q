@@ -86,6 +86,10 @@ export type Service = {
   id: number;
   name: string;
   description: string | null;
+  /** Stable key used by the booking RPCs (e.g. "mens-haircut"). */
+  service_key: string;
+  /** Free-form text in the database; typed loosely on purpose. */
+  status: string;
   /** Postgres `numeric` arrives as a JSON number via PostgREST. */
   price: number;
   duration_minutes: number;
@@ -175,7 +179,9 @@ export type Booking = {
   customer_name: string;
   /** Nullable for bookings created before phone collection was added. */
   customer_phone: string | null;
-  /** FK -> time_slots.id */
+  /** FK -> services.id; null for legacy bookings created before services were tracked. */
+  service_id: number | null;
+  /** FK -> time_slots.id (the booking's starting slot). */
   time_slot_id: number;
   status: BookingStatus;
   created_at: ISODateTime;
@@ -192,6 +198,17 @@ export type BookingInsert = {
 export type BookingUpdate = Partial<BookingInsert>;
 
 /**
+ * One occupied slot of a booking. A single-slot booking has no rows here; a
+ * multi-slot booking (e.g. a perm) has one row per occupied `time_slots` id.
+ */
+export type BookingSlot = {
+  id: number;
+  booking_id: number;
+  time_slot_id: number;
+  created_at: ISODateTime;
+};
+
+/**
  * A slot joined with the fact of whether it is already taken.
  *
  * The guest UI needs both halves of that in one paint, and `booked_slot_ids()`
@@ -199,6 +216,27 @@ export type BookingUpdate = Partial<BookingInsert>;
  */
 export type SlotWithAvailability = TimeSlot & {
   isBooked: boolean;
+};
+
+export type AvailableStart = {
+  time_slot_id: number;
+  start_time: string;
+  end_time: string;
+};
+
+export type CreateBookingV2Result = {
+  booking_id: number;
+  service_id: number;
+  service_key: string;
+  service_name: string;
+  duration_minutes: number;
+  duration_slots: number;
+  time_slot_id: number;
+  slot_ids: number[];
+  slot_date: string;
+  start_time: string;
+  end_time: string;
+  status: string;
 };
 
 /* ------------------------------------------------------------------ *
@@ -221,15 +259,28 @@ export type Promotion = {
  * ------------------------------------------------------------------ */
 
 /**
- * A booking with its slot attached. There are no foreign-key joins to embed, so
- * the slot is looked up in memory; `date` and `time` are derived from it.
+ * A booking with its slot(s) attached. There are no foreign-key joins to embed,
+ * so everything is looked up in memory. Multi-slot aware: `slotIds` is the union
+ * of `bookings.time_slot_id` and every `booking_slots.time_slot_id`, and
+ * `slotStart` / `slotEnd` span the whole occupied range. For legacy single-slot
+ * bookings (no `booking_slots` rows) these fall back to the one `time_slot_id`.
  */
 export type BookingWithRefs = Booking & {
   timeSlot: Pick<TimeSlot, "id" | "slot_date" | "start_time" | "end_time"> | null;
-  /** Derived from the slot, since bookings stores no date. */
+  /** Derived from the starting slot, since bookings stores no date. */
   date: ISODate | null;
-  /** Derived from the slot, since bookings stores no time. */
+  /** Derived from the starting slot, since bookings stores no time. */
   time: string | null;
+  /** Every occupied slot id: `bookings.time_slot_id` ∪ `booking_slots.time_slot_id`. */
+  slotIds: number[];
+  /** Span start (HH:MM:SS) across occupied slots; falls back to the single slot. */
+  slotStart: string | null;
+  /** Span end (HH:MM:SS) across occupied slots; falls back to the single slot. */
+  slotEnd: string | null;
+  /** Service display name, or null when the booking has no `service_id`. */
+  serviceName: string | null;
+  /** Service key, or null. */
+  serviceKey: string | null;
 };
 
 /* ------------------------------------------------------------------ *
@@ -258,6 +309,11 @@ export type Database = {
         Update: TimeSlotUpdate;
       };
       bookings: Table & { Row: Booking; Insert: BookingInsert; Update: BookingUpdate };
+      booking_slots: Table & {
+        Row: BookingSlot;
+        Insert: { booking_id: number; time_slot_id: number; created_at?: ISODateTime };
+        Update: Partial<{ booking_id: number; time_slot_id: number }>;
+      };
       promotions: Table & { Row: Promotion; Insert: Partial<Promotion>; Update: Partial<Promotion> };
     };
     Views: Record<string, never>;
@@ -284,6 +340,19 @@ export type Database = {
       booked_slot_ids: {
         Args: { p_date: ISODate };
         Returns: { time_slot_id: number }[];
+      };
+      get_available_starts: {
+        Args: { p_date: ISODate; p_service_key: string };
+        Returns: AvailableStart[];
+      };
+      create_booking_v2: {
+        Args: {
+          p_customer_name: string;
+          p_customer_phone: string;
+          p_service_key: string;
+          p_time_slot_id: number;
+        };
+        Returns: CreateBookingV2Result;
       };
     };
     /** No enums: every status-like column is plain `text`. */

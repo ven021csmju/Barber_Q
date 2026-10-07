@@ -1,7 +1,7 @@
 "use client";
 
 import { getSupabaseClient } from "@/lib/supabase/client";
-import type { BookingStatus, ISODate, SlotWithAvailability } from "@/lib/supabase/types";
+import type { AvailableStart, BookingStatus, ISODate, SlotWithAvailability } from "@/lib/supabase/types";
 import { isLunchBreakSlot, normalizeThaiPhone, removeStartedSlots } from "@/lib/utils";
 
 /**
@@ -103,6 +103,36 @@ export async function fetchAvailability(date: ISODate): Promise<{
     totalAvailable: availableSlots.length,
     error: null,
   };
+}
+
+export async function fetchAvailableStarts(
+  date: ISODate,
+  serviceKey: string,
+): Promise<{ slots: SlotWithAvailability[]; totalAvailable: number; error: string | null }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    return { slots: [], totalAvailable: 0, error: "ยังไม่ได้ตั้งค่า Supabase ในฝั่ง Client" };
+  }
+
+  const { data, error } = await supabase.rpc("get_available_starts", {
+    p_date: date,
+    p_service_key: serviceKey,
+  });
+
+  if (error) {
+    console.error("[booking] get_available_starts failed:", error);
+    return { slots: [], totalAvailable: 0, error: describe(error) };
+  }
+
+  const rows = (data ?? []) as AvailableStart[];
+  const slots = rows.map((row) => ({
+    id: Number(row.time_slot_id),
+    start_time: row.start_time,
+    end_time: row.end_time,
+    isBooked: false,
+  })) as unknown as SlotWithAvailability[];
+
+  return { slots, totalAvailable: slots.length, error: null };
 }
 
 /** Dates that have at least one available slot row in the shop's booking window. */

@@ -2,9 +2,11 @@ import { cache } from "react";
 import { createAdminClient } from "./admin";
 import type {
   Booking,
+  BookingSlot,
   BookingStatus,
   BookingWithRefs,
   ISODate,
+  Service,
   TimeSlot,
 } from "./types";
 import { isActiveBooking } from "./types";
@@ -103,17 +105,89 @@ export const getSlotDates = cache(async (limit = 30): Promise<QueryResult<ISODat
  * ------------------------------------------------------------------ */
 
 /**
- * Join a flat booking list to its slots. Bookings carry no date of their own, so
- * both `date` and `time` are derived from the slot.
+ * Batch-load `booking_slots` for a set of bookings (one round trip, never N+1).
+ */
+async function fetchBookingSlotsForBookings(
+  ids: number[],
+): Promise<Map<number, BookingSlot[]>> {
+  const map = new Map<number, BookingSlot[]>();
+  if (ids.length === 0) return map;
+
+  const supabase = createAdminClient();
+  if (!supabase) return map;
+
+  const { data } = await supabase
+    .from("booking_slots")
+    .select("id,booking_id,time_slot_id,created_at")
+    .in("booking_id", ids);
+
+  for (const row of (data ?? []) as BookingSlot[]) {
+    const list = map.get(row.booking_id) ?? [];
+    list.push(row);
+    map.set(row.booking_id, list);
+  }
+  return map;
+}
+
+/**
+ * Batch-load services by id (one round trip) so a booking can show its service.
+ */
+async function fetchServicesByIds(ids: (number | null)[]): Promise<Map<number, Service>> {
+  const map = new Map<number, Service>();
+  const unique = [...new Set(ids.filter((id): id is number => id != null))];
+  if (unique.length === 0) return map;
+
+  const supabase = createAdminClient();
+  if (!supabase) return map;
+
+  const { data } = await supabase
+    .from("services")
+    .select("id,service_key,name,status,description,price,duration_minutes,created_at")
+    .in("id", unique);
+
+  for (const row of (data ?? []) as Service[]) map.set(row.id, row);
+  return map;
+}
+
+/**
+ * Join a flat booking list to its slots, multi-slot aware.
+ *
+ * `slotIds` is the union of `bookings.time_slot_id` and every
+ * `booking_slots.time_slot_id`; `slotStart` / `slotEnd` span the full occupied
+ * range. Legacy single-slot bookings (no `booking_slots` rows) fall back to the
+ * one `time_slot_id`. The service name/key come from the services map.
  */
 function attachSlots(
   bookings: Booking[],
   slots: TimeSlot[],
+  bookingSlotsByBooking: Map<number, BookingSlot[]>,
+  servicesById: Map<number, Service>,
 ): BookingWithRefs[] {
   const byId = new Map(slots.map((s) => [s.id, s]));
 
   return bookings.map((booking) => {
     const slot = byId.get(booking.time_slot_id) ?? null;
+
+    const occupiedIds = new Set<number>([booking.time_slot_id]);
+    for (const bs of bookingSlotsByBooking.get(booking.id) ?? []) {
+      occupiedIds.add(bs.time_slot_id);
+    }
+    const slotIds = [...occupiedIds];
+
+    let slotStart: string | null = null;
+    let slotEnd: string | null = null;
+    for (const id of slotIds) {
+      const s = byId.get(id);
+      if (!s) continue;
+      if (slotStart === null || s.start_time < slotStart) slotStart = s.start_time;
+      if (slotEnd === null || s.end_time > slotEnd) slotEnd = s.end_time;
+    }
+    if (slotStart === null && slot) slotStart = slot.start_time;
+    if (slotEnd === null && slot) slotEnd = slot.end_time;
+
+    const service =
+      booking.service_id != null ? (servicesById.get(booking.service_id) ?? null) : null;
+
     return {
       ...booking,
       timeSlot: slot
@@ -126,6 +200,11 @@ function attachSlots(
         : null,
       date: slot?.slot_date ?? null,
       time: slot ? (formatClockTime(slot.start_time) ?? slot.start_time) : null,
+      slotIds,
+      slotStart,
+      slotEnd,
+      serviceName: service?.name ?? null,
+      serviceKey: service?.service_key ?? null,
     };
   });
 }
@@ -187,7 +266,7 @@ export const getBookings = cache(
 
     let bookingQuery = supabase
       .from("bookings")
-      .select("id,customer_name,customer_phone,time_slot_id,status,created_at,updated_at")
+      .select("id,customer_name,customer_phone,service_id,time_slot_id,status,created_at,updated_at")
       .in("time_slot_id", slots.map((s) => s.id));
 
     if (filter.status && filter.status.length > 0) {
@@ -197,7 +276,10 @@ export const getBookings = cache(
     const { data: bookingRows, error: bookingError } = await bookingQuery;
     if (bookingError) return fail("getBookings(rows)", bookingError, []);
 
-    let joined = attachSlots((bookingRows ?? []) as Booking[], slots);
+    const bookings = (bookingRows ?? []) as Booking[];
+    const bookingSlotsByBooking = await fetchBookingSlotsForBookings(bookings.map((b) => b.id));
+    const servicesById = await fetchServicesByIds(bookings.map((b) => b.service_id));
+    let joined = attachSlots(bookings, slots, bookingSlotsByBooking, servicesById);
 
     const needle = filter.nameQuery?.trim().toLowerCase();
     if (needle) {
@@ -226,12 +308,15 @@ export async function getAllBookings(): Promise<QueryResult<BookingWithRefs[]>> 
 
   const { data: bookings, error: bookingError } = await supabase
     .from("bookings")
-    .select("id,customer_name,customer_phone,time_slot_id,status,created_at,updated_at")
+    .select("id,customer_name,customer_phone,service_id,time_slot_id,status,created_at,updated_at")
     .in("time_slot_id", (slots as TimeSlot[]).map((s) => s.id));
 
   if (bookingError) return fail("getAllBookings(rows)", bookingError, []);
 
-  const joined = attachSlots((bookings ?? []) as Booking[], slots as TimeSlot[]);
+  const bookingList = (bookings ?? []) as Booking[];
+  const bookingSlotsByBooking = await fetchBookingSlotsForBookings(bookingList.map((b) => b.id));
+  const servicesById = await fetchServicesByIds(bookingList.map((b) => b.service_id));
+  const joined = attachSlots(bookingList, slots as TimeSlot[], bookingSlotsByBooking, servicesById);
   joined.sort((a, b) => {
     const byDate = (a.date ?? "").localeCompare(b.date ?? "");
     if (byDate !== 0) return byDate;
@@ -260,7 +345,12 @@ export async function getDashboardStats(date: ISODate) {
   // Occupancy is `pending` + `confirmed` only. A completed appointment is done
   // and a cancelled one was abandoned; neither holds the slot.
   const active = onDate.filter((b) => isActiveBooking(b.status));
-  const takenSlotIds = new Set(active.map((b) => b.time_slot_id));
+  // Multi-slot aware: a booking occupies every slot in `booking_slots`, not just
+  // its starting `time_slot_id`.
+  const takenSlotIds = new Set<number>();
+  for (const b of active) {
+    for (const id of b.slotIds) takenSlotIds.add(id);
+  }
 
   return {
     error: null,
@@ -307,11 +397,15 @@ export const getBookingTimeline = cache(
     if (slotsResult.error) return fail("getBookingTimeline(slots)", slotsResult.error, []);
     if (bookingsResult.error) return fail("getBookingTimeline(bookings)", bookingsResult.error, []);
 
+    // A booking appears under every occupied slot (its starting slot plus each
+    // `booking_slots` row), so a 4-slot perm shows on all four 30-minute rows.
     const bySlot = new Map<number, BookingWithRefs[]>();
     for (const booking of bookingsResult.data) {
-      const list = bySlot.get(booking.time_slot_id) ?? [];
-      list.push(booking);
-      bySlot.set(booking.time_slot_id, list);
+      for (const id of booking.slotIds) {
+        const list = bySlot.get(id) ?? [];
+        list.push(booking);
+        bySlot.set(id, list);
+      }
     }
 
     return ok(
@@ -351,25 +445,27 @@ export const getSlotOverview = cache(
     if (slotsResult.error) return fail("getSlotOverview(slots)", slotsResult.error, []);
     if (bookingsResult.error) return fail("getSlotOverview(bookings)", bookingsResult.error, []);
 
-    const activeBySlot = new Map<number, Booking>();
+    // Occupancy is `bookings.time_slot_id` UNION `booking_slots.time_slot_id` for
+    // active bookings only. A 4-slot perm therefore marks all of its slots (e.g.
+    // 693-696) as booked, not just the starting one.
+    const occupied = new Map<number, Pick<Booking, "id" | "customer_name" | "status">>();
     for (const booking of bookingsResult.data) {
       if (!isActiveBooking(booking.status)) continue;
-      if (!activeBySlot.has(booking.time_slot_id)) {
-        activeBySlot.set(booking.time_slot_id, {
-          id: booking.id,
-          customer_name: booking.customer_name,
-          customer_phone: booking.customer_phone,
-          time_slot_id: booking.time_slot_id,
-          status: booking.status,
-          created_at: booking.created_at,
-          updated_at: booking.updated_at,
-        });
+      if (occupied.has(booking.time_slot_id)) continue;
+      for (const id of booking.slotIds) {
+        if (!occupied.has(id)) {
+          occupied.set(id, {
+            id: booking.id,
+            customer_name: booking.customer_name,
+            status: booking.status,
+          });
+        }
       }
     }
 
     return ok(
       slotsResult.data.map((slot) => {
-        const booking = activeBySlot.get(slot.id) ?? null;
+        const booking = occupied.get(slot.id) ?? null;
         return { slot, isBooked: booking !== null, booking };
       }),
     );

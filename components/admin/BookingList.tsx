@@ -120,9 +120,12 @@ export function BookingList({ bookings }: { bookings: BookingWithRefs[] }) {
                 )}
                 <p className="truncate text-xs text-white/40">
                   #{booking.id}
-                  {booking.timeSlot
-                    ? ` · ${booking.timeSlot.start_time.slice(0, 5)}–${booking.timeSlot.end_time.slice(0, 5)}`
-                    : " · ไม่พบช่วงเวลา"}
+                  {booking.slotStart && booking.slotEnd
+                    ? ` · ${booking.slotStart.slice(0, 5)}–${booking.slotEnd.slice(0, 5)}`
+                    : booking.timeSlot
+                      ? ` · ${booking.timeSlot.start_time.slice(0, 5)}–${booking.timeSlot.end_time.slice(0, 5)}`
+                      : " · ไม่พบช่วงเวลา"}
+                  {booking.serviceName ? ` · ${booking.serviceName}` : " · ไม่ระบุ"}
                 </p>
                 <p className="truncate text-[0.65rem] text-white/30">
                   สร้างเมื่อ {createdClock(booking.created_at)}

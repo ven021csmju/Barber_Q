@@ -39,18 +39,25 @@ const BOOKED_BLOCKS_DELETE = "ไม่สามารถลบคิวที�
 const SLOT_COLUMNS = "id,slot_date,start_time,end_time,status,created_at";
 
 /**
- * The active booking on a slot, or null.
+ * The active booking that occupies a slot, or null.
  *
  * `pending` and `confirmed` only: a completed or cancelled booking leaves the
  * slot free, so it must not block the owner from managing that timeslot.
+ *
+ * Multi-slot aware: a slot can be held either as a booking's starting
+ * `time_slot_id` OR as one of its `booking_slots` rows. A perm occupying slots
+ * 693-696 must block all four, so we check `booking_slots` when the direct
+ * `time_slot_id` match finds nothing.
  */
 async function findActiveBooking(slotId: number): Promise<Booking | null> {
   const supabase = createAdminClient();
   if (!supabase) return null;
 
+  const COLUMNS = "id,customer_name,time_slot_id,status,created_at,updated_at";
+
   const { data, error } = await supabase
     .from("bookings")
-    .select("id,customer_name,time_slot_id,status,created_at,updated_at")
+    .select(COLUMNS)
     .eq("time_slot_id", slotId)
     .in("status", [...ACTIVE_BOOKING_STATUSES])
     .limit(1);
@@ -59,7 +66,35 @@ async function findActiveBooking(slotId: number): Promise<Booking | null> {
     console.error("[admin] findActiveBooking failed:", error.message);
     return null;
   }
-  return ((data ?? []) as Booking[])[0] ?? null;
+  const direct = ((data ?? []) as Booking[])[0];
+  if (direct) return direct;
+
+  // Not the starting slot — look it up through booking_slots (multi-slot bookings).
+  const { data: link, error: linkError } = await supabase
+    .from("booking_slots")
+    .select("booking_id")
+    .eq("time_slot_id", slotId)
+    .limit(1);
+
+  if (linkError) {
+    console.error("[admin] findActiveBooking(booking_slots) failed:", linkError.message);
+    return null;
+  }
+  const bookingId = (link ?? [])[0]?.booking_id;
+  if (bookingId == null) return null;
+
+  const { data: via, error: viaError } = await supabase
+    .from("bookings")
+    .select(COLUMNS)
+    .eq("id", bookingId)
+    .in("status", [...ACTIVE_BOOKING_STATUSES])
+    .limit(1);
+
+  if (viaError) {
+    console.error("[admin] findActiveBooking(via booking) failed:", viaError.message);
+    return null;
+  }
+  return ((via ?? []) as Booking[])[0] ?? null;
 }
 
 async function getSlot(slotId: number): Promise<TimeSlot | null> {

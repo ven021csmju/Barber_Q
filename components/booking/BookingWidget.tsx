@@ -6,7 +6,7 @@ import { toPng } from "html-to-image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createBookingWithNotification } from "@/app/actions/booking";
 import { Button } from "@/components/ui/Button";
-import { fetchAvailability, fetchSlotDates } from "@/lib/supabase/client-queries";
+import { fetchAvailableStarts, fetchSlotDates } from "@/lib/supabase/client-queries";
 import {
   bookingTouchesSlot,
   slotChangeTouchesDate,
@@ -34,8 +34,10 @@ const WEEKDAY_LABELS = ["จ", "อ", "พ", "พฤ", "ศ", "ส", "อ"] as c
 
 const SERVICES = [
   {
+    key: "mens-haircut",
     name: "Men's Haircut",
     thaiName: "ตัดผมชาย",
+    durationSlots: 1,
     detail: "Classic cut",
     description: "ทรงคลาสสิกที่เก็บรายละเอียดรอบกรอบหน้าและท้ายทอยอย่างพอดี",
     price: "฿100",
@@ -43,8 +45,10 @@ const SERVICES = [
     image: null,
   },
   {
+    key: "volume-perm",
     name: "Volume Perm",
     thaiName: "ดัดวอลลุ่ม",
+    durationSlots: 4,
     detail: "Natural volume & texture",
     description: "เพิ่มวอลลุ่มและรูปทรงให้เส้นผมดูมีมิติ พร้อม styling ที่ดูเป็นธรรมชาติ",
     price: "฿700–1,000",
@@ -52,8 +56,10 @@ const SERVICES = [
     image: "/images/services/volume-perm.png",
   },
   {
+    key: "curly-perm",
     name: "Curly Perm",
     thaiName: "ดัดหยิก",
+    durationSlots: 4,
     detail: "Defined curls with character",
     description: "ลอนหยิกที่ชัดขึ้นแต่ยังคง movement ของเส้นผมและ texture ที่ดูสะอาด",
     price: "฿700–1,000",
@@ -61,8 +67,10 @@ const SERVICES = [
     image: "/images/services/curly-perm.png",
   },
   {
+    key: "messy-perm",
     name: "Messy Perm",
     thaiName: "ดัดเซอร์",
+    durationSlots: 4,
     detail: "Effortless texture & movement",
     description: "เพิ่ม texture แบบเซอร์ ๆ ให้ทรงผมมี movement และจัดทรงได้ง่ายในทุกวัน",
     price: "฿700–1,000",
@@ -70,8 +78,10 @@ const SERVICES = [
     image: "/images/services/messy-perm.png",
   },
   {
+    key: "down-perm",
     name: "Down Perm",
     thaiName: "ดาวน์เพิร์ม",
+    durationSlots: null,
     detail: "Clean & controlled sides",
     description: "กดเส้นผมด้านข้างให้เข้าทรง เนี้ยบขึ้น และดูสมดุลกับรูปหน้า",
     price: "฿200–500",
@@ -79,8 +89,10 @@ const SERVICES = [
     image: "/images/services/down-perm.png",
   },
   {
+    key: "up-perm",
     name: "Up Perm",
     thaiName: "อัพเพิร์ม",
+    durationSlots: null,
     detail: "Lifted volume & definition",
     description: "ยกโคนและเพิ่ม form ให้ผมด้านบนดูมีทิศทางและมี volume มากขึ้น",
     price: "฿200–500",
@@ -90,6 +102,8 @@ const SERVICES = [
 ] as const;
 
 type Service = (typeof SERVICES)[number];
+
+
 
 const monthFormatter = new Intl.DateTimeFormat("th-TH", {
   month: "long",
@@ -133,7 +147,7 @@ function ServicePicker({
           <p className="text-[0.6rem] font-bold tracking-[0.25em] text-white/35 uppercase">OUR SERVICES</p>
           <h2 id="pick-service" className="mt-1 font-serif text-3xl tracking-[-0.04em] text-white">FIND YOUR STYLE. <span className="font-display text-base tracking-normal text-white/55">(เลือกบริการ)</span></h2>
         </div>
-        {selected ? <span className="rounded-full bg-white px-3 py-1 text-[0.6rem] font-bold tracking-[0.15em] text-ink-950 uppercase">Selected</span> : <span className="rounded-full border border-white/30 px-3 py-1 text-[0.6rem] font-bold tracking-[0.15em] text-white/70 uppercase">Required</span>}
+        {selected ? <span className="rounded-full bg-white px-3 py-1 text-[0.6rem] font-bold tracking-[0.15em] text-ink-950 uppercase">{selected.durationSlots === null ? "duration pending" : `${selected.durationSlots} slot${selected.durationSlots === 1 ? "" : "s"}`}</span> : <span className="rounded-full border border-white/30 px-3 py-1 text-[0.6rem] font-bold tracking-[0.15em] text-white/70 uppercase">Required</span>}
       </div>
       <div className="mt-4 grid gap-2 px-1 py-1">
         {SERVICES.map((service) => {
@@ -238,8 +252,6 @@ const GUEST_WATCHED_TABLES = [{ table: "time_slots" }];
  * point of the request-ticket check.
  */
 const NO_SLOTS: SlotWithAvailability[] = [];
-const NO_BOOKED_IDS: number[] = [];
-
 /**
  * Month calendar.
  *
@@ -556,21 +568,33 @@ export function BookingWidget({
    * was issued, so a response the guest has already navigated away from is
    * discarded instead of overwriting the grid with the wrong day.
    */
-  const load = useCallback(async (iso: ISODate) => {
+  const serviceKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    serviceKeyRef.current = selectedService?.key ?? null;
+  }, [selectedService]);
+
+  const load = useCallback(async (iso: ISODate, serviceKey?: string | null) => {
     const ticket = ++requestId.current;
 
     setDay((prev) =>
       prev.date === iso ? { ...prev, loading: true, error: null } : prev,
     );
 
-    const { slots, bookedIds, totalAvailable, error } = await fetchAvailability(iso);
+    const key = serviceKey ?? serviceKeyRef.current;
+    if (!key) {
+      if (ticket !== requestId.current) return;
+      setDay({ date: iso, slots: [], bookedIds: [], totalAvailable: 0, loading: false, error: null });
+      return;
+    }
+
+    const { slots, totalAvailable, error } = await fetchAvailableStarts(iso, key);
 
     if (ticket !== requestId.current) return; // superseded by a newer date
 
     setDay({
       date: iso,
       slots,
-      bookedIds,
+      bookedIds: [],
       totalAvailable,
       loading: false,
       error,
@@ -583,6 +607,14 @@ export function BookingWidget({
       });
     }
   }, []);
+
+  const handleServiceSelect = useCallback(
+    (service: Service | null) => {
+      setSelectedService(service);
+      if (date) void load(date, service?.key ?? null);
+    },
+    [date, load],
+  );
 
   /**
    * Switching date clears the grid immediately, so the previous day's times are
@@ -604,13 +636,12 @@ export function BookingWidget({
         loading: true,
         error: null,
       });
-      void load(next);
+      void load(next, serviceKeyRef.current);
     },
     [date, load],
   );
 
   const slots = date && day.date === date ? day.slots : NO_SLOTS;
-  const bookedIds = date && day.date === date ? day.bookedIds : NO_BOOKED_IDS;
   const loading = date ? (day.date === date ? day.loading : true) : false;
   const loadError = date && day.date === date ? day.error : null;
   const totalAvailable = date && day.date === date ? day.totalAvailable : 0;
@@ -632,9 +663,8 @@ export function BookingWidget({
   const daySlotIds = useCallback(() => {
     const ids = new Set<number>();
     for (const slot of slots) ids.add(Number(slot.id));
-    for (const id of bookedIds) ids.add(Number(id));
     return ids;
-  }, [slots, bookedIds]);
+  }, [slots]);
 
   /**
    * Reloads when the database moved underneath the day on screen, and stays put
@@ -707,7 +737,7 @@ export function BookingWidget({
         phone={phone}
         phoneError={phoneError}
         service={selectedService}
-        onServiceSelect={setSelectedService}
+        onServiceSelect={handleServiceSelect}
         onNameChange={(value) => {
           setName(value);
           if (nameError) setNameError(null);
@@ -998,11 +1028,12 @@ function DayForm({
    * Resolving to the object from `slots` rather than the stored one also means an
    * owner editing the time while the guest is choosing is reflected immediately.
    */
+    const serviceSlots = slots;
   const selectedSlot = selection
-    ? (slots.find((slot) => Number(slot.id) === Number(selection.id)) ?? null)
+    ? (serviceSlots.find((slot) => Number(slot.id) === Number(selection.id)) ?? null)
     : null;
 
-  const openCount = slots.filter((s) => !s.isBooked).length;
+  const openCount = serviceSlots.filter((s) => !s.isBooked).length;
   const longDate = longDateFormatter.format(new Date(`${date}T00:00:00`));
 
   /**
@@ -1076,7 +1107,7 @@ function DayForm({
       customerName: trimmed,
       customerPhone: normalizedPhone,
       timeSlotId: selectedSlot.id,
-      serviceName: service.name,
+      serviceKey: service.key,
       bookingDate: longDate,
       bookingTime: formatTime12Hour(selectedSlot.start_time) ?? selectedSlot.start_time,
     });
@@ -1150,35 +1181,41 @@ function DayForm({
         <p className="mt-0.5 text-xs text-white/45">{longDate}</p>
 
         <div className="mt-3">
-          <SlotGrid
-            slots={slots}
-            date={date}
-            totalAvailable={totalAvailable}
-            selectedId={selectedSlot?.id ?? null}
-            loading={loading}
-            error={loadError}
-            onSelect={(slot) => {
-              if (selectedSlot && Number(selectedSlot.id) === Number(slot.id)) {
-                setSelection(null);
+          {service && date ? (
+            <SlotGrid
+              slots={serviceSlots}
+              date={date}
+              totalAvailable={totalAvailable}
+              selectedId={selectedSlot?.id ?? null}
+              loading={loading}
+              error={loadError}
+              onSelect={(slot) => {
+                if (selectedSlot && Number(selectedSlot.id) === Number(slot.id)) {
+                  setSelection(null);
+                  setSubmitError(null);
+                  return;
+                }
+                if (isLunchBreakSlot(slot.start_time, slot.end_time)) {
+                  setSubmitError("ช่วง 12:00–13:00 เป็นเวลาพักของร้าน กรุณาเลือกเวลาอื่น");
+                  setSelection(null);
+                  onSlotLost();
+                  return;
+                }
+                if (slotHasStarted(date, slot.start_time)) {
+                  setSubmitError("เวลานี้ผ่านไปแล้ว กรุณาเลือกเวลาใหม่");
+                  setSelection(null);
+                  onSlotLost();
+                  return;
+                }
                 setSubmitError(null);
-                return;
-              }
-              if (isLunchBreakSlot(slot.start_time, slot.end_time)) {
-                setSubmitError("ช่วง 12:00–13:00 เป็นเวลาพักของร้าน กรุณาเลือกเวลาอื่น");
-                setSelection(null);
-                onSlotLost();
-                return;
-              }
-              if (slotHasStarted(date, slot.start_time)) {
-                setSubmitError("เวลานี้ผ่านไปแล้ว กรุณาเลือกเวลาใหม่");
-                setSelection(null);
-                onSlotLost();
-                return;
-              }
-              setSubmitError(null);
-              setSelection(slot);
-            }}
-          />
+                setSelection(slot);
+              }}
+            />
+          ) : (
+            <p className="rounded-2xl bg-ink-800 px-4 py-6 text-center text-sm text-white/50">
+              {date ? "เลือกบริการเพื่อดูเวลาที่ว่าง" : "กรุณาเลือกวันที่ก่อน"}
+            </p>
+          )}
         </div>
       </section>
 

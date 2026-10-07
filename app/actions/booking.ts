@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { sendBookingNotification } from "@/lib/line/notification";
 import { formatThaiDate, formatTime12Hour, normalizeThaiPhone } from "@/lib/utils";
-import type { BookingStatus } from "@/lib/supabase/types";
+import type { BookingStatus, CreateBookingV2Result } from "@/lib/supabase/types";
 
 export type ServerBookingFailure =
   | "taken" | "blocked" | "not_found" | "invalid_name" | "phone_required"
@@ -41,7 +41,7 @@ export async function createBookingWithNotification(input: {
   customerName: string;
   customerPhone: string;
   timeSlotId: number;
-  serviceName?: string | null;
+  serviceKey: string;
   bookingDate: string;
   bookingTime: string;
 }): Promise<ServerBookingResult> {
@@ -49,20 +49,22 @@ export async function createBookingWithNotification(input: {
   if (!supabase) return { ok: false, reason: "config" };
 
   const normalizedPhone = normalizeThaiPhone(input.customerPhone);
-  const { data, error } = await supabase.rpc("create_booking", {
+  const { data, error } = await supabase.rpc("create_booking_v2", {
     p_customer_name: input.customerName.trim(),
     p_customer_phone: normalizedPhone,
+    p_service_key: input.serviceKey,
     p_time_slot_id: input.timeSlotId,
   });
 
   if (error) {
-    console.error("[booking] create_booking RPC failed");
+    console.error("[booking] create_booking_v2 RPC failed");
     return { ok: false, reason: reasonFromRpcError(error) };
   }
   if (!data) return { ok: false, reason: "error" };
 
-  const status = bookingStatus((data as { status?: unknown }).status);
-  const bookingId = Number((data as { id?: unknown }).id) || 0;
+  const result = data as unknown as CreateBookingV2Result;
+  const status = bookingStatus(result.status);
+  const bookingId = Number(result.booking_id) || 0;
   let bookingDate = input.bookingDate;
   let bookingTime = input.bookingTime;
 
@@ -78,7 +80,7 @@ export async function createBookingWithNotification(input: {
     await sendBookingNotification({
       customerName: input.customerName.trim(),
       customerPhone: normalizedPhone,
-      serviceName: input.serviceName,
+      serviceName: result.service_name,
       bookingDate,
       bookingTime,
       status,
