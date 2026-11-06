@@ -1,0 +1,60 @@
+# TEMPORARY architecture exception — see docs/architecture.md (AE-1).
+# Mitigation only: it lowers the chance of a Free-tier inactivity pause but does
+# not guarantee the project stays active. It never resumes a paused project.
+# Remove or re-approve once the Phase 4 recovery cron is deployed and verified.
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    - cron: '0 12 * * 1,4' # Mondays and Thursdays at 12:00 UTC (19:00 Thailand time)
+  workflow_dispatch: # Allows a manual run from the Actions tab
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keep-supabase-alive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Read one id from time_slots
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          set -euo pipefail
+
+          # Publishable key only. Secret / service-role keys are refused.
+          case "${SUPABASE_PUBLISHABLE_KEY:-}" in
+            sb_publishable_*) ;;
+            *)
+              echo "SUPABASE_PUBLISHABLE_KEY must be a Supabase publishable key (sb_publishable_...)."
+              exit 1
+              ;;
+          esac
+
+          case "${SUPABASE_URL:-}" in
+            https://*.supabase.co | https://*.supabase.co/) ;;
+            *)
+              echo "SUPABASE_URL must look like https://<project-ref>.supabase.co"
+              exit 1
+              ;;
+          esac
+
+          # time_slots holds no customer data and is readable by the guest role.
+          status=$(curl --silent --show-error --max-time 20 \
+            --output /dev/null \
+            --write-out "%{http_code}" \
+            --header "apikey: ${SUPABASE_PUBLISHABLE_KEY}" \
+            "${SUPABASE_URL%/}/rest/v1/time_slots?select=id&limit=1") || status="000"
+
+          echo "Supabase responded with HTTP ${status}"
+
+          if [ "$status" != "200" ]; then
+            echo "Keep-alive failed. Check the secrets and whether the project is paused (HTTP 540)."
+            exit 1
+          fi
